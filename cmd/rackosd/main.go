@@ -15,6 +15,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/config"
 	"github.com/tschleining/rackos/internal/appliance/database"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
+	"github.com/tschleining/rackos/internal/appliance/identity"
 )
 
 const version = "0.1.0-dev"
@@ -85,6 +86,15 @@ func run(
 	}()
 
 	logger.Info("Database initialized")
+
+	installationID, err := identity.LoadOrCreate(ctx, db)
+	if err != nil {
+		return fmt.Errorf("initialize appliance identity: %w", err)
+	}
+
+	logger.Info("Appliance identity initialized",
+		"installation_id", installationID,
+	)
 
 	server := httpserver.New(
 		cfg.HTTPAddr,
