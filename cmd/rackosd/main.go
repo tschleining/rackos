@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tschleining/rackos/internal/appliance/config"
+	"github.com/tschleining/rackos/internal/appliance/database"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 )
 
@@ -63,7 +64,33 @@ func run(
 		"log_level", cfg.LogLevel.String(),
 	)
 
-	server := httpserver.New(cfg.HTTPAddr, version)
+	logger.Info("Initializing database",
+		"data_dir", cfg.DataDir,
+	)
+
+	db, err := database.Open(ctx, cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("initialize database: %w", err)
+	}
+
+	defer func() {
+		if err := db.Close(); err != nil {
+			logger.Error("Failed to close database",
+				"error", err,
+			)
+			return
+		}
+
+		logger.Info("Database closed")
+	}()
+
+	logger.Info("Database initialized")
+
+	server := httpserver.New(
+		cfg.HTTPAddr,
+		version,
+		db.PingContext,
+	)
 
 	listener, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {
@@ -110,7 +137,7 @@ func run(
 	}
 
 	logger.Info("HTTP server stopped")
-	logger.Info("Shutdown complete")
+	logger.Info("HTTP shutdown complete")
 
 	return nil
 }
