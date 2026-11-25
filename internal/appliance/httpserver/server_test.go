@@ -1,7 +1,9 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,7 +11,7 @@ import (
 )
 
 func TestEndpoints(t *testing.T) {
-	handler := NewHandler("0.1.0-test")
+	handler := NewHandler("0.1.0-test", alwaysReady)
 
 	tests := []struct {
 		name string
@@ -74,7 +76,7 @@ func TestEndpoints(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	handler := NewHandler("0.1.0-test")
+	handler := NewHandler("0.1.0-test", alwaysReady)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
@@ -92,7 +94,7 @@ func TestNotFound(t *testing.T) {
 }
 
 func TestMethodNotAllowed(t *testing.T) {
-	handler := NewHandler("0.1.0-test")
+	handler := NewHandler("0.1.0-test", alwaysReady)
 
 	req := httptest.NewRequest(
 		http.MethodPost,
@@ -106,5 +108,42 @@ func TestMethodNotAllowed(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("expected status 405, got %d", rec.Code)
+	}
+}
+
+func alwaysReady(ctx context.Context) error {
+	return nil
+}
+
+func TestReadinessUnavailable(t *testing.T) {
+	handler := NewHandler(
+		"0.1.0-test",
+		func(ctx context.Context) error {
+			return errors.New("database unavailable")
+		},
+	)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/readyz",
+		nil,
+	)
+
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", rec.Code)
+	}
+
+	var got map[string]string
+
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+
+	if got["status"] != "not_ready" {
+		t.Errorf("unexpected readiness status: %v", got)
 	}
 }
