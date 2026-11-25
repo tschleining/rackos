@@ -1,0 +1,39 @@
+
+syntax = "proto3";
+
+package rackos.v1;
+
+option go_package = "github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1";
+
+// AgentService manages communication between
+// RackOS appliances and monitoring agents.
+service AgentService {
+  rpc Enroll(EnrollRequest) returns (EnrollResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message DeviceInfo {
+  string hostname = 1;
+  string os = 2;
+  string architecture = 3;
+  string agent_version = 4;
+}
+
+message EnrollRequest {
+  DeviceInfo device = 1;
+}
+
+message EnrollResponse {
+  string device_id = 1;
+  string installation_id = 2;
+  uint32 heartbeat_interval_seconds = 3;
+  string agent_token = 4;
+}
+
+message HeartbeatRequest {
+  string device_id = 1;
+}
+
+message HeartbeatResponse {
+  uint32 heartbeat_interval_seconds = 1;
+}
