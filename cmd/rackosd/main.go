@@ -6,15 +6,23 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/tschleining/rackos/internal/appliance/config"
 )
 
 const version = "0.1.0-dev"
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
 	logger := slog.New(slog.NewTextHandler(
 		os.Stdout,
 		&slog.HandlerOptions{
-			Level: slog.LevelInfo,
+			Level: cfg.LogLevel,
 		},
 	))
 
@@ -27,6 +35,13 @@ func main() {
 
 	logger.Info("Starting RackOS appliance",
 		"version", version,
+	)
+
+	logger.Debug("Configuration loaded",
+		"http_addr", cfg.HTTPAddr,
+		"grpc_addr", cfg.GRPCAddr,
+		"data_dir", cfg.DataDir,
+		"log_level", cfg.LogLevel.String(),
 	)
 
 	logger.Info("RackOS appliance is running")
