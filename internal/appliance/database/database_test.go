@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -143,5 +144,89 @@ func TestForeignKeysEnabled(t *testing.T) {
 
 	if enabled != 1 {
 		t.Fatal("foreign keys are not enabled")
+	}
+}
+
+func TestUpgradeFromVersionOne(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	path := filepath.Join(dataDir, Filename)
+
+	oldDB, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer oldDB.Close()
+
+	_, err = oldDB.ExecContext(ctx, `
+		CREATE TABLE appliance_metadata (
+			key TEXT PRIMARY KEY NOT NULL,
+			value TEXT NOT NULL
+		);
+
+		INSERT INTO appliance_metadata (key, value)
+		VALUES ('installation_id', 'existing-identity');
+
+		PRAGMA user_version = 1;
+	`)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := oldDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := Open(ctx, dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var version int
+
+	err = db.QueryRowContext(
+		ctx,
+		"PRAGMA user_version",
+	).Scan(&version)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if version != len(migrations) {
+		t.Fatalf("unexpected schema version: %d", version)
+	}
+
+	var identity string
+
+	err = db.QueryRowContext(
+		ctx,
+		`SELECT value FROM appliance_metadata
+		 WHERE key = 'installation_id'`,
+	).Scan(&identity)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if identity != "existing-identity" {
+		t.Fatal("migration did not preserve existing identity")
+	}
+
+	var count int
+
+	err = db.QueryRowContext(
+		ctx,
+		"SELECT COUNT(*) FROM devices",
+	).Scan(&count)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if count != 0 {
+		t.Fatal("expected empty devices table")
 	}
 }

@@ -14,6 +14,23 @@ var migrations = []string{
 		value TEXT NOT NULL
 	);
 	`,
+
+	// Migration 002: Managed devices.
+	`
+	CREATE TABLE devices (
+		id TEXT PRIMARY KEY NOT NULL,
+		hostname TEXT NOT NULL,
+		os TEXT NOT NULL,
+		architecture TEXT NOT NULL,
+		agent_version TEXT NOT NULL,
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		last_seen_at INTEGER NOT NULL
+	);
+
+	CREATE INDEX idx_devices_last_seen_at
+		ON devices(last_seen_at);
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
