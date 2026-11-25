@@ -14,8 +14,10 @@ import (
 
 	"github.com/tschleining/rackos/internal/appliance/config"
 	"github.com/tschleining/rackos/internal/appliance/database"
+	"github.com/tschleining/rackos/internal/appliance/grpcserver"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 	"github.com/tschleining/rackos/internal/appliance/identity"
+	"google.golang.org/grpc"
 )
 
 const version = "0.1.0-dev"
@@ -96,40 +98,82 @@ func run(
 		"installation_id", installationID,
 	)
 
-	server := httpserver.New(
+	httpServer := httpserver.New(
 		cfg.HTTPAddr,
 		version,
 		db.PingContext,
 	)
 
-	listener, err := net.Listen("tcp", cfg.HTTPAddr)
+	grpcServer := grpcserver.New()
+
+	httpListener, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {
 		return fmt.Errorf("listen on HTTP address: %w", err)
 	}
-	defer listener.Close()
+	defer httpListener.Close()
 
-	serverErr := make(chan error, 1)
+	grpcListener, err := grpcserver.Listen(cfg.GRPCAddr)
+	if err != nil {
+		return err
+	}
+	defer grpcListener.Close()
+
+	type serverResult struct {
+		name string
+		err  error
+	}
+
+	serverResults := make(chan serverResult, 2)
 
 	go func() {
-		serverErr <- server.Serve(listener)
+		serverResults <- serverResult{
+			name: "HTTP",
+			err:  httpServer.Serve(httpListener),
+		}
+	}()
+
+	go func() {
+		serverResults <- serverResult{
+			name: "gRPC",
+			err:  grpcServer.Serve(grpcListener),
+		}
 	}()
 
 	logger.Info("HTTP server listening",
-		"address", listener.Addr().String(),
+		"address", httpListener.Addr().String(),
+	)
+
+	logger.Info("gRPC server listening",
+		"address", grpcListener.Addr().String(),
+		"tls", false,
 	)
 
 	logger.Info("RackOS appliance is running")
 
+	var runErr error
+	remaining := 2
+
 	select {
-	case err := <-serverErr:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("HTTP server failed: %w", err)
+	case result := <-serverResults:
+		remaining--
+
+		if result.err != nil {
+			runErr = fmt.Errorf(
+				"%s server stopped unexpectedly: %w",
+				result.name,
+				result.err,
+			)
+		} else {
+			runErr = fmt.Errorf(
+				"%s server stopped unexpectedly",
+				result.name,
+			)
 		}
-		return nil
 
 	case <-ctx.Done():
-		logger.Info("Shutting down RackOS appliance")
 	}
+
+	logger.Info("Shutting down RackOS appliance")
 
 	shutdownCtx, cancel := context.WithTimeout(
 		context.Background(),
@@ -137,17 +181,53 @@ func run(
 	)
 	defer cancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		_ = server.Close()
-		return fmt.Errorf("HTTP server shutdown failed: %w", err)
+	grpcShutdown := make(chan error, 1)
+
+	go func() {
+		grpcShutdown <- grpcServer.Shutdown(shutdownCtx)
+	}()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		_ = httpServer.Close()
+
+		runErr = errors.Join(
+			runErr,
+			fmt.Errorf("HTTP shutdown failed: %w", err),
+		)
+	} else {
+		logger.Info("HTTP server stopped")
 	}
 
-	if err := <-serverErr; !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("HTTP server failed: %w", err)
+	if err := <-grpcShutdown; err != nil {
+		runErr = errors.Join(runErr, err)
+	} else {
+		logger.Info("gRPC server stopped")
 	}
 
-	logger.Info("HTTP server stopped")
-	logger.Info("HTTP shutdown complete")
+	for i := 0; i < remaining; i++ {
+		result := <-serverResults
+
+		if result.err == nil ||
+			errors.Is(result.err, http.ErrServerClosed) ||
+			errors.Is(result.err, grpc.ErrServerStopped) {
+			continue
+		}
+
+		runErr = errors.Join(
+			runErr,
+			fmt.Errorf(
+				"%s server failed: %w",
+				result.name,
+				result.err,
+			),
+		)
+	}
+
+	if runErr != nil {
+		return runErr
+	}
+
+	logger.Info("Network services stopped")
 
 	return nil
 }
