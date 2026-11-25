@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/tschleining/rackos/internal/appliance/config"
+	"github.com/tschleining/rackos/internal/appliance/httpserver"
 )
 
 const version = "0.1.0-dev"
@@ -31,8 +37,21 @@ func main() {
 		os.Interrupt,
 		syscall.SIGTERM,
 	)
-	defer stop()
 
+	err = run(ctx, cfg, logger)
+	stop()
+
+	if err != nil {
+		logger.Error("RackOS appliance failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(
+	ctx context.Context,
+	cfg config.Config,
+	logger *slog.Logger,
+) error {
 	logger.Info("Starting RackOS appliance",
 		"version", version,
 	)
@@ -44,10 +63,54 @@ func main() {
 		"log_level", cfg.LogLevel.String(),
 	)
 
+	server := httpserver.New(cfg.HTTPAddr, version)
+
+	listener, err := net.Listen("tcp", cfg.HTTPAddr)
+	if err != nil {
+		return fmt.Errorf("listen on HTTP address: %w", err)
+	}
+	defer listener.Close()
+
+	serverErr := make(chan error, 1)
+
+	go func() {
+		serverErr <- server.Serve(listener)
+	}()
+
+	logger.Info("HTTP server listening",
+		"address", listener.Addr().String(),
+	)
+
 	logger.Info("RackOS appliance is running")
 
-	<-ctx.Done()
+	select {
+	case err := <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("HTTP server failed: %w", err)
+		}
+		return nil
 
-	logger.Info("Shutting down RackOS appliance")
+	case <-ctx.Done():
+		logger.Info("Shutting down RackOS appliance")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		_ = server.Close()
+		return fmt.Errorf("HTTP server shutdown failed: %w", err)
+	}
+
+	if err := <-serverErr; !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("HTTP server failed: %w", err)
+	}
+
+	logger.Info("HTTP server stopped")
 	logger.Info("Shutdown complete")
+
+	return nil
 }
