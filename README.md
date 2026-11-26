@@ -32,30 +32,59 @@ Additional agentless checks and native integrations from RackOS
 Agents are intended to send telemetry, not accept unsolicited inbound connections. Remote command execution is out of scope for the initial agent.
 
 ```text
-Proposed repository layout
+### Repository Layout
+
+```text
 cmd/
   rackosd/              # Appliance daemon
-  rackos-agent/         # Linux / Windows agent
-  rackosctl/            # CLI utilities
+  rackos-agent/         # Host monitoring agent
+  rackosctl/            # Administrative CLI
+
 internal/
-  appliance/            # Enrollment, identity, inventory, monitoring, storage
-  agent/                # Transport, collectors, platform-specific code
-  shared/               # Private shared packages
+  appliance/
+    agentservice/       # Agent services and inventory ingestion
+    config/             # Appliance configuration
+    credentials/        # Credential management
+    database/           # SQLite persistence and migrations
+    devices/            # Device management and repositories
+    enrollment/         # Enrollment token management
+    grpcserver/         # gRPC agent server
+    httpserver/         # HTTP management API
+    identity/           # Appliance identity
+    inventory/          # Inventory validation and persistence
+    pki/                # Public key infrastructure and certificate rotation
+
+  agent/
+    client/             # Appliance communication and inventory reporting
+    inventory/          # Hardware and platform-specific collectors
+    state/              # Persistent local agent state
+
 api/
-  proto/rackos/v1/      # Agent protocol definitions
-  openapi/              # Management API definition
-  schemas/              # Plugin manifest schemas
-web/
-  apps/console/         # Browser-based management console
-  apps/panel/           # 1U touchscreen interface
-  packages/             # Shared UI, API client and themes
-plugins/                # SDK, example integrations, schemas
-firmware/               # Embedded Linux, board configurations, updates
-packaging/              # DEB/RPM/MSI and container packaging
-tests/                  # Integration, contract, end-to-end, hardware tests
-docs/                   # Architecture, security, hardware and agent documentation
-.github/workflows/      # CI and release automation
+  proto/
+    rackos/
+      v1/               # Versioned protobuf definitions and gRPC bindings
+
+docs/
+  agent-protocol.md
+  device-administration.md
+  hardware-inventory.md
+  inventory-storage.md
+  management-api.md
+
+.github/
+  workflows/
+    ci.yml              # Continuous integration
+
+.gitignore
+go.mod                  # Go module definition
+go.sum                  # Go dependency checksums
+LICENSE
+README.md
 ```
+
+Tests are maintained alongside their respective implementation files.
+Additional directories will be introduced incrementally as their
+corresponding components are developed.
 
 
 Directories may be introduced incrementally rather than as empty placeholders. Go, TypeScript, protobuf and firmware dependencies will be pinned when those components are bootstrapped.

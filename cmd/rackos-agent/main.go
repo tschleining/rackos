@@ -96,8 +96,19 @@ func run(
 		return runInventory(ctx, stdout)
 	}
 
-	if command != "enroll" && command != "run" {
+	if command == "metrics" {
+		if len(args) == 2 &&
+			(args[1] == "--help" || args[1] == "-h") {
+			fmt.Fprintln(stdout, "Usage: rackos-agent metrics")
+			fmt.Fprintln(stdout, "")
+			fmt.Fprintln(stdout, "Collect local CPU and memory utilization.")
+			return nil
+		}
 
+		return runMetrics(ctx, args[1:], stdout)
+	}
+
+	if command != "enroll" && command != "run" {
 		return errors.New(
 			"unknown command; run rackos-agent help",
 		)
@@ -337,6 +348,7 @@ func runAgent(
 
 func printUsage(w io.Writer) {
 	fmt.Fprint(w, `RackOS monitoring agent
+	fmt.Fprintln(stdout, "  rackos-agent metrics")
 
 Usage:
   rackos-agent help
