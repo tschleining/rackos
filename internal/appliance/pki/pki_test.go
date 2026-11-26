@@ -23,8 +23,9 @@ func TestLoadOrCreate(t *testing.T) {
 		t.Fatal("expected TLS 1.3")
 	}
 
-	if len(cfg.Certificates) != 1 {
-		t.Fatal("expected one server certificate")
+	if cfg.GetCertificate == nil ||
+		len(cfg.Certificates) != 0 {
+		t.Fatal("expected dynamic certificate configuration")
 	}
 
 	privatePath := filepath.Join(
@@ -53,8 +54,13 @@ func TestLoadOrCreate(t *testing.T) {
 		t.Fatal("invalid CA certificate")
 	}
 
+	pair, err := cfg.GetCertificate(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cert, err := x509.ParseCertificate(
-		cfg.Certificates[0].Certificate[0],
+		pair.Certificate[0],
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -111,9 +117,19 @@ func TestPersistentAuthority(t *testing.T) {
 		t.Fatal("CA changed after restart")
 	}
 
+	firstCert, err := first.GetCertificate(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secondCert, err := second.GetCertificate(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if bytes.Equal(
-		first.Certificates[0].Certificate[0],
-		second.Certificates[0].Certificate[0],
+		firstCert.Certificate[0],
+		secondCert.Certificate[0],
 	) {
 		t.Fatal("server certificate was not reissued")
 	}

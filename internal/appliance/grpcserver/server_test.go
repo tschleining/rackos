@@ -20,24 +20,51 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestRejectNonLoopbackAddresses(t *testing.T) {
+func TestRejectInvalidBindAddresses(t *testing.T) {
 	addresses := []string{
 		"0.0.0.0:50051",
 		":50051",
-		"192.168.1.100:50051",
 		"[::]:50051",
 		"localhost:50051",
+		"224.0.0.1:50051",
+		"255.255.255.255:50051",
+		"127.0.0.1:65536",
+		"127.0.0.1:-1",
+		"127.0.0.1:abc",
 		"invalid",
-		"127.0.0.2:50051",
 	}
 
 	for _, addr := range addresses {
 		t.Run(addr, func(t *testing.T) {
-			listener, err := Listen(addr)
+			if _, err := BindIP(addr); err == nil {
+				t.Fatal("invalid bind address accepted")
+			}
 
+			listener, err := Listen(addr)
 			if err == nil {
 				listener.Close()
-				t.Fatal("expected address rejection")
+				t.Fatal("invalid listener accepted")
+			}
+		})
+	}
+}
+
+func TestValidBindAddresses(t *testing.T) {
+	addresses := []string{
+		"127.0.0.1:50051",
+		"127.0.0.2:50051",
+		"127.0.0.1:0",
+		"192.168.1.50:50051",
+		"10.0.0.50:50051",
+		"172.16.0.50:50051",
+		"[::1]:50051",
+		"[fd00::50]:50051",
+	}
+
+	for _, addr := range addresses {
+		t.Run(addr, func(t *testing.T) {
+			if _, err := BindIP(addr); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

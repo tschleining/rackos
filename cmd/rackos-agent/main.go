@@ -124,6 +124,12 @@ func run(
 			false,
 			"enable debug logging",
 		)
+
+		address = flags.String(
+			"address",
+			"",
+			"override the stored appliance address",
+		)
 	}
 
 	if err := flags.Parse(args[1:]); err != nil {
@@ -164,6 +170,7 @@ func run(
 		return runAgent(
 			ctx,
 			*stateDir,
+			*address,
 			logger,
 		)
 	}
@@ -262,6 +269,7 @@ func enroll(
 func runAgent(
 	ctx context.Context,
 	stateDir string,
+	addressOverride string,
 	logger *slog.Logger,
 ) error {
 	saved, err := state.Load(stateDir)
@@ -269,8 +277,14 @@ func runAgent(
 		return err
 	}
 
+	address := saved.ApplianceAddress
+
+	if addressOverride != "" {
+		address = addressOverride
+	}
+
 	connection, err := client.New(
-		saved.ApplianceAddress,
+		address,
 		[]byte(saved.CAPEM),
 	)
 	if err != nil {
@@ -283,7 +297,7 @@ func runAgent(
 		"version", version,
 		"device_id", saved.DeviceID,
 		"installation_id", saved.InstallationID,
-		"appliance", saved.ApplianceAddress,
+		"appliance", address,
 	)
 
 	err = connection.Run(
@@ -309,9 +323,11 @@ Usage:
   rackos-agent help
   rackos-agent version
   rackos-agent enroll --address HOST:PORT --ca FILE [--state-dir DIR]
-  rackos-agent run [--state-dir DIR] [--debug]
+  rackos-agent run [--state-dir DIR] [--address HOST:PORT] [--debug]
 
 Enrollment tokens are read from standard input.
 Agent credentials are stored in the local agent state directory.
+The optional run address overrides the stored appliance address
+for the current execution without modifying agent state.
 `)
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"strconv"
 
 	rackosv1 "github.com/tschleining/rackos/api/proto/rackos/v1"
 
@@ -69,25 +70,47 @@ func New(
 	}
 }
 
-func Listen(addr string) (net.Listener, error) {
-	host, _, err := net.SplitHostPort(addr)
+// BindIP validates an explicit gRPC listening address.
+func BindIP(addr string) (net.IP, error) {
+	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid gRPC address: %w", err)
+		return nil, fmt.Errorf(
+			"invalid gRPC address: %w", err,
+		)
+	}
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 0 || portNumber > 65535 {
+		return nil, fmt.Errorf("invalid gRPC port")
 	}
 
 	ip := net.ParseIP(host)
 
-	if ip == nil ||
-		(!ip.Equal(net.IPv4(127, 0, 0, 1)) &&
-			!ip.Equal(net.IPv6loopback)) {
+	if ip == nil {
 		return nil, fmt.Errorf(
-			"gRPC requires 127.0.0.1 or ::1 until remote agent authentication is enabled",
+			"gRPC listening address must be an explicit IP",
 		)
+	}
+
+	if !ip.IsLoopback() && !ip.IsGlobalUnicast() {
+		return nil, fmt.Errorf(
+			"gRPC requires a loopback or unicast IP address",
+		)
+	}
+
+	return ip, nil
+}
+
+func Listen(addr string) (net.Listener, error) {
+	if _, err := BindIP(addr); err != nil {
+		return nil, err
 	}
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("listen on gRPC address: %w", err)
+		return nil, fmt.Errorf(
+			"listen on gRPC address: %w", err,
+		)
 	}
 
 	return listener, nil
