@@ -289,6 +289,250 @@ func (x *HeartbeatResponse) GetHeartbeatIntervalSeconds() uint32 {
 	return 0
 }
 
+type HardwareInventory struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Hostname              string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Os                    string                 `protobuf:"bytes,2,opt,name=os,proto3" json:"os,omitempty"`
+	Architecture          string                 `protobuf:"bytes,3,opt,name=architecture,proto3" json:"architecture,omitempty"`
+	LogicalCpus           uint32                 `protobuf:"varint,4,opt,name=logical_cpus,json=logicalCpus,proto3" json:"logical_cpus,omitempty"`
+	HostLogicalCpus       uint32                 `protobuf:"varint,5,opt,name=host_logical_cpus,json=hostLogicalCpus,proto3" json:"host_logical_cpus,omitempty"`
+	PhysicalCores         uint32                 `protobuf:"varint,6,opt,name=physical_cores,json=physicalCores,proto3" json:"physical_cores,omitempty"`
+	CpuModel              string                 `protobuf:"bytes,7,opt,name=cpu_model,json=cpuModel,proto3" json:"cpu_model,omitempty"`
+	CpuManufacturer       string                 `protobuf:"bytes,8,opt,name=cpu_manufacturer,json=cpuManufacturer,proto3" json:"cpu_manufacturer,omitempty"`
+	MemoryBytes           uint64                 `protobuf:"varint,9,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
+	HardwareModel         string                 `protobuf:"bytes,10,opt,name=hardware_model,json=hardwareModel,proto3" json:"hardware_model,omitempty"`
+	OsVersion             string                 `protobuf:"bytes,11,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`
+	KernelVersion         string                 `protobuf:"bytes,12,opt,name=kernel_version,json=kernelVersion,proto3" json:"kernel_version,omitempty"`
+	BootTimeUnixMillis    int64                  `protobuf:"varint,13,opt,name=boot_time_unix_millis,json=bootTimeUnixMillis,proto3" json:"boot_time_unix_millis,omitempty"`
+	CollectedAtUnixMillis int64                  `protobuf:"varint,14,opt,name=collected_at_unix_millis,json=collectedAtUnixMillis,proto3" json:"collected_at_unix_millis,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *HardwareInventory) Reset() {
+	*x = HardwareInventory{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardwareInventory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardwareInventory) ProtoMessage() {}
+
+func (x *HardwareInventory) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HardwareInventory.ProtoReflect.Descriptor instead.
+func (*HardwareInventory) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *HardwareInventory) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetOs() string {
+	if x != nil {
+		return x.Os
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetArchitecture() string {
+	if x != nil {
+		return x.Architecture
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetLogicalCpus() uint32 {
+	if x != nil {
+		return x.LogicalCpus
+	}
+	return 0
+}
+
+func (x *HardwareInventory) GetHostLogicalCpus() uint32 {
+	if x != nil {
+		return x.HostLogicalCpus
+	}
+	return 0
+}
+
+func (x *HardwareInventory) GetPhysicalCores() uint32 {
+	if x != nil {
+		return x.PhysicalCores
+	}
+	return 0
+}
+
+func (x *HardwareInventory) GetCpuModel() string {
+	if x != nil {
+		return x.CpuModel
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetCpuManufacturer() string {
+	if x != nil {
+		return x.CpuManufacturer
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetMemoryBytes() uint64 {
+	if x != nil {
+		return x.MemoryBytes
+	}
+	return 0
+}
+
+func (x *HardwareInventory) GetHardwareModel() string {
+	if x != nil {
+		return x.HardwareModel
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetKernelVersion() string {
+	if x != nil {
+		return x.KernelVersion
+	}
+	return ""
+}
+
+func (x *HardwareInventory) GetBootTimeUnixMillis() int64 {
+	if x != nil {
+		return x.BootTimeUnixMillis
+	}
+	return 0
+}
+
+func (x *HardwareInventory) GetCollectedAtUnixMillis() int64 {
+	if x != nil {
+		return x.CollectedAtUnixMillis
+	}
+	return 0
+}
+
+type ReportInventoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	Inventory     *HardwareInventory     `protobuf:"bytes,2,opt,name=inventory,proto3" json:"inventory,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportInventoryRequest) Reset() {
+	*x = ReportInventoryRequest{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportInventoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportInventoryRequest) ProtoMessage() {}
+
+func (x *ReportInventoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportInventoryRequest.ProtoReflect.Descriptor instead.
+func (*ReportInventoryRequest) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ReportInventoryRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *ReportInventoryRequest) GetInventory() *HardwareInventory {
+	if x != nil {
+		return x.Inventory
+	}
+	return nil
+}
+
+type ReportInventoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportInventoryResponse) Reset() {
+	*x = ReportInventoryResponse{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportInventoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportInventoryResponse) ProtoMessage() {}
+
+func (x *ReportInventoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportInventoryResponse.ProtoReflect.Descriptor instead.
+func (*ReportInventoryResponse) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ReportInventoryResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
 var File_rackos_v1_agent_proto protoreflect.FileDescriptor
 
 const file_rackos_v1_agent_proto_rawDesc = "" +
@@ -311,10 +555,33 @@ const file_rackos_v1_agent_proto_rawDesc = "" +
 	"\x10HeartbeatRequest\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\"Q\n" +
 	"\x11HeartbeatResponse\x12<\n" +
-	"\x1aheartbeat_interval_seconds\x18\x01 \x01(\rR\x18heartbeatIntervalSeconds2\x95\x01\n" +
+	"\x1aheartbeat_interval_seconds\x18\x01 \x01(\rR\x18heartbeatIntervalSeconds\"\x9d\x04\n" +
+	"\x11HardwareInventory\x12\x1a\n" +
+	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
+	"\x02os\x18\x02 \x01(\tR\x02os\x12\"\n" +
+	"\farchitecture\x18\x03 \x01(\tR\farchitecture\x12!\n" +
+	"\flogical_cpus\x18\x04 \x01(\rR\vlogicalCpus\x12*\n" +
+	"\x11host_logical_cpus\x18\x05 \x01(\rR\x0fhostLogicalCpus\x12%\n" +
+	"\x0ephysical_cores\x18\x06 \x01(\rR\rphysicalCores\x12\x1b\n" +
+	"\tcpu_model\x18\a \x01(\tR\bcpuModel\x12)\n" +
+	"\x10cpu_manufacturer\x18\b \x01(\tR\x0fcpuManufacturer\x12!\n" +
+	"\fmemory_bytes\x18\t \x01(\x04R\vmemoryBytes\x12%\n" +
+	"\x0ehardware_model\x18\n" +
+	" \x01(\tR\rhardwareModel\x12\x1d\n" +
+	"\n" +
+	"os_version\x18\v \x01(\tR\tosVersion\x12%\n" +
+	"\x0ekernel_version\x18\f \x01(\tR\rkernelVersion\x121\n" +
+	"\x15boot_time_unix_millis\x18\r \x01(\x03R\x12bootTimeUnixMillis\x127\n" +
+	"\x18collected_at_unix_millis\x18\x0e \x01(\x03R\x15collectedAtUnixMillis\"q\n" +
+	"\x16ReportInventoryRequest\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12:\n" +
+	"\tinventory\x18\x02 \x01(\v2\x1c.rackos.v1.HardwareInventoryR\tinventory\"5\n" +
+	"\x17ReportInventoryResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted2\xef\x01\n" +
 	"\fAgentService\x12=\n" +
 	"\x06Enroll\x12\x18.rackos.v1.EnrollRequest\x1a\x19.rackos.v1.EnrollResponse\x12F\n" +
-	"\tHeartbeat\x12\x1b.rackos.v1.HeartbeatRequest\x1a\x1c.rackos.v1.HeartbeatResponseB<Z:github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1b\x06proto3"
+	"\tHeartbeat\x12\x1b.rackos.v1.HeartbeatRequest\x1a\x1c.rackos.v1.HeartbeatResponse\x12X\n" +
+	"\x0fReportInventory\x12!.rackos.v1.ReportInventoryRequest\x1a\".rackos.v1.ReportInventoryResponseB<Z:github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1b\x06proto3"
 
 var (
 	file_rackos_v1_agent_proto_rawDescOnce sync.Once
@@ -328,25 +595,31 @@ func file_rackos_v1_agent_proto_rawDescGZIP() []byte {
 	return file_rackos_v1_agent_proto_rawDescData
 }
 
-var file_rackos_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_rackos_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_rackos_v1_agent_proto_goTypes = []any{
-	(*DeviceInfo)(nil),        // 0: rackos.v1.DeviceInfo
-	(*EnrollRequest)(nil),     // 1: rackos.v1.EnrollRequest
-	(*EnrollResponse)(nil),    // 2: rackos.v1.EnrollResponse
-	(*HeartbeatRequest)(nil),  // 3: rackos.v1.HeartbeatRequest
-	(*HeartbeatResponse)(nil), // 4: rackos.v1.HeartbeatResponse
+	(*DeviceInfo)(nil),              // 0: rackos.v1.DeviceInfo
+	(*EnrollRequest)(nil),           // 1: rackos.v1.EnrollRequest
+	(*EnrollResponse)(nil),          // 2: rackos.v1.EnrollResponse
+	(*HeartbeatRequest)(nil),        // 3: rackos.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),       // 4: rackos.v1.HeartbeatResponse
+	(*HardwareInventory)(nil),       // 5: rackos.v1.HardwareInventory
+	(*ReportInventoryRequest)(nil),  // 6: rackos.v1.ReportInventoryRequest
+	(*ReportInventoryResponse)(nil), // 7: rackos.v1.ReportInventoryResponse
 }
 var file_rackos_v1_agent_proto_depIdxs = []int32{
 	0, // 0: rackos.v1.EnrollRequest.device:type_name -> rackos.v1.DeviceInfo
-	1, // 1: rackos.v1.AgentService.Enroll:input_type -> rackos.v1.EnrollRequest
-	3, // 2: rackos.v1.AgentService.Heartbeat:input_type -> rackos.v1.HeartbeatRequest
-	2, // 3: rackos.v1.AgentService.Enroll:output_type -> rackos.v1.EnrollResponse
-	4, // 4: rackos.v1.AgentService.Heartbeat:output_type -> rackos.v1.HeartbeatResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 1: rackos.v1.ReportInventoryRequest.inventory:type_name -> rackos.v1.HardwareInventory
+	1, // 2: rackos.v1.AgentService.Enroll:input_type -> rackos.v1.EnrollRequest
+	3, // 3: rackos.v1.AgentService.Heartbeat:input_type -> rackos.v1.HeartbeatRequest
+	6, // 4: rackos.v1.AgentService.ReportInventory:input_type -> rackos.v1.ReportInventoryRequest
+	2, // 5: rackos.v1.AgentService.Enroll:output_type -> rackos.v1.EnrollResponse
+	4, // 6: rackos.v1.AgentService.Heartbeat:output_type -> rackos.v1.HeartbeatResponse
+	7, // 7: rackos.v1.AgentService.ReportInventory:output_type -> rackos.v1.ReportInventoryResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_rackos_v1_agent_proto_init() }
@@ -360,7 +633,7 @@ func file_rackos_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rackos_v1_agent_proto_rawDesc), len(file_rackos_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
