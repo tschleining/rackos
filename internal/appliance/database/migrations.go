@@ -31,6 +31,23 @@ var migrations = []string{
 	CREATE INDEX idx_devices_last_seen_at
 		ON devices(last_seen_at);
 	`,
+
+	// Migration 003: Agent enrollment tokens.
+	`
+	CREATE TABLE enrollment_tokens (
+		id TEXT PRIMARY KEY NOT NULL,
+		token_hash BLOB UNIQUE NOT NULL
+			CHECK(length(token_hash) = 32),
+		created_at INTEGER NOT NULL,
+		expires_at INTEGER NOT NULL,
+		used_at INTEGER,
+		revoked_at INTEGER,
+		CHECK(expires_at > created_at)
+	);
+
+	CREATE INDEX idx_enrollment_tokens_expires_at
+		ON enrollment_tokens(expires_at);
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
