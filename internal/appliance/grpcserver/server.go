@@ -23,16 +23,27 @@ type agentService struct {
 	rackosv1.UnimplementedAgentServiceServer
 }
 
-func New(tlsConfig *tls.Config) *Server {
+func New(
+	tlsConfig *tls.Config,
+	service rackosv1.AgentServiceServer,
+) *Server {
 	server := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),
 		grpc.MaxRecvMsgSize(1<<20),
 		grpc.MaxSendMsgSize(1<<20),
 	)
 
+	agentStatus := healthpb.HealthCheckResponse_NOT_SERVING
+
+	if service == nil {
+		service = &agentService{}
+	} else {
+		agentStatus = healthpb.HealthCheckResponse_SERVING
+	}
+
 	rackosv1.RegisterAgentServiceServer(
 		server,
-		&agentService{},
+		service,
 	)
 
 	healthServer := health.NewServer()
@@ -49,7 +60,7 @@ func New(tlsConfig *tls.Config) *Server {
 
 	healthServer.SetServingStatus(
 		rackosv1.AgentService_ServiceDesc.ServiceName,
-		healthpb.HealthCheckResponse_NOT_SERVING,
+		agentStatus,
 	)
 
 	return &Server{

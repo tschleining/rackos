@@ -25,8 +25,28 @@ const deviceColumns = `
 	created_at, updated_at, last_seen_at
 `
 
+type executor interface {
+	ExecContext(
+		context.Context,
+		string,
+		...any,
+	) (sql.Result, error)
+
+	QueryContext(
+		context.Context,
+		string,
+		...any,
+	) (*sql.Rows, error)
+
+	QueryRowContext(
+		context.Context,
+		string,
+		...any,
+	) *sql.Row
+}
+
 type Repository struct {
-	db  *sql.DB
+	db  executor
 	now func() time.Time
 }
 
@@ -34,6 +54,15 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{
 		db:  db,
 		now: time.Now,
+	}
+}
+
+// WithTx returns a repository scoped to an existing
+// transaction. The caller controls commit and rollback.
+func (r *Repository) WithTx(tx *sql.Tx) *Repository {
+	return &Repository{
+		db:  tx,
+		now: r.now,
 	}
 }
 
