@@ -196,13 +196,18 @@ func TestInventoryReportingIntegration(t *testing.T) {
 		return &rackosv1.ReportInventoryRequest{
 			DeviceId: deviceID,
 			Inventory: &rackosv1.HardwareInventory{
-				Hostname:              "test-device.local",
-				Os:                    "darwin",
-				Architecture:          "arm64",
-				LogicalCpus:           14,
-				HostLogicalCpus:       14,
-				PhysicalCores:         14,
-				MemoryBytes:           25769803776,
+				Hostname:              snapshot.Hostname,
+				Os:                    snapshot.OS,
+				Architecture:          snapshot.Architecture,
+				LogicalCpus:           uint32(snapshot.LogicalCPUs),
+				HostLogicalCpus:       uint32(snapshot.HostLogicalCPUs),
+				PhysicalCores:         uint32(snapshot.PhysicalCores),
+				CpuModel:              snapshot.CPUModel,
+				CpuManufacturer:       snapshot.CPUManufacturer,
+				MemoryBytes:           snapshot.MemoryBytes,
+				HardwareModel:         snapshot.HardwareModel,
+				OsVersion:             snapshot.OSVersion,
+				KernelVersion:         snapshot.KernelVersion,
 				BootTimeUnixMillis:    bootTime.UnixMilli(),
 				CollectedAtUnixMillis: now.UnixMilli(),
 			},
@@ -404,6 +409,20 @@ func TestInventoryReportingIntegration(t *testing.T) {
 		}
 	})
 
+	// Persistence tests must run BEFORE revocation
+	// or deletion of either test device.
+	t.Run("persistent inventory reporting", func(t *testing.T) {
+		testPersistentInventoryReporting(
+			t,
+			ctx,
+			db,
+			rpc,
+			first,
+			second,
+			newRequest,
+		)
+	})
+
 	t.Run("revoked credential rejected", func(t *testing.T) {
 		err := agentcredentials.Revoke(
 			ctx,
@@ -444,7 +463,24 @@ func TestInventoryReportingIntegration(t *testing.T) {
 	})
 
 	t.Run("removed device rejected", func(t *testing.T) {
-		err := repository.Delete(
+		var count int
+
+		// Verify inventory exists before deletion.
+		err := db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM device_inventory
+			WHERE device_id = ?
+		`, second.GetDeviceId()).Scan(&count)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if count != 1 {
+			t.Fatal("device has no persisted inventory")
+		}
+
+		err = repository.Delete(
 			ctx,
 			second.GetDeviceId(),
 		)
@@ -452,6 +488,22 @@ func TestInventoryReportingIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		// Verify cascading inventory deletion.
+		err = db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM device_inventory
+			WHERE device_id = ?
+		`, second.GetDeviceId()).Scan(&count)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if count != 0 {
+			t.Fatal("deleted device inventory still exists")
+		}
+
+		// Removed devices cannot report inventory.
 		_, err = rpc.ReportInventory(
 			inventoryAuthContext(
 				ctx,
@@ -463,6 +515,38 @@ func TestInventoryReportingIntegration(t *testing.T) {
 		requireInventoryCode(
 			t, err, codes.Unauthenticated,
 		)
+
+		// Verify the rejected report did not
+		// recreate the deleted inventory.
+		err = db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM device_inventory
+			WHERE device_id = ?
+		`, second.GetDeviceId()).Scan(&count)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if count != 0 {
+			t.Fatal("removed device recreated its inventory")
+		}
+
+		// The first device's inventory must remain
+		// intact even though its credential is revoked.
+		err = db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM device_inventory
+			WHERE device_id = ?
+		`, first.GetDeviceId()).Scan(&count)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if count != 1 {
+			t.Fatal("unrelated device inventory was removed")
+		}
 	})
 }
 

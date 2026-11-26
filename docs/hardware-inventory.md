@@ -148,14 +148,25 @@ The inventory implementation includes:
 
 ## Current Limitations
 
-- No inventory reporting to the appliance.
-- No persistent inventory storage.
 - No inventory management API.
 - No storage device inventory.
 - No network interface inventory.
 - No Windows-specific hardware collection.
-- No periodic inventory refresh.
 - No performance telemetry.
 
 Virtualized and containerized environments may expose
 hardware information that differs from the physical host.
+
+## Automatic Reporting
+
+The agent automatically reports hardware inventory at
+startup and refreshes it every six hours after a
+successful report.
+
+The appliance persists the latest snapshot for each
+registered device.
+
+The standalone inventory command remains local-only.
+
+See [Persistent Hardware Inventory](inventory-storage.md)
+for storage and reporting details.
