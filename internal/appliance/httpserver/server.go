@@ -3,6 +3,8 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
@@ -14,9 +16,19 @@ func New(
 	version string,
 	check ReadinessCheck,
 ) *http.Server {
+	return NewWithDevices(addr, version, check, nil)
+}
+
+func NewWithDevices(
+	addr string,
+	version string,
+	check ReadinessCheck,
+	repository DeviceReader,
+) *http.Server {
+
 	return &http.Server{
 		Addr:              addr,
-		Handler:           NewHandler(version, check),
+		Handler:           NewHandlerWithDevices(version, check, repository),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -29,6 +41,15 @@ func NewHandler(
 	version string,
 	check ReadinessCheck,
 ) http.Handler {
+	return NewHandlerWithDevices(version, check, nil)
+}
+
+func NewHandlerWithDevices(
+	version string,
+	check ReadinessCheck,
+	repository DeviceReader,
+) http.Handler {
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", handleHealth)
@@ -42,6 +63,10 @@ func NewHandler(
 			})
 		},
 	)
+
+	if repository != nil {
+		registerDeviceRoutes(mux, repository)
+	}
 
 	return mux
 }
@@ -81,4 +106,34 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+// Listen creates a loopback-only management API listener.
+//
+// Remote management access must remain disabled until
+// administrator authentication and HTTPS are implemented.
+func Listen(addr string) (net.Listener, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"invalid HTTP address: %w", err,
+		)
+	}
+
+	ip := net.ParseIP(host)
+
+	if ip == nil || !ip.IsLoopback() {
+		return nil, fmt.Errorf(
+			"HTTP management API requires an explicit loopback IP address",
+		)
+	}
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"listen on HTTP address: %w", err,
+		)
+	}
+
+	return listener, nil
 }

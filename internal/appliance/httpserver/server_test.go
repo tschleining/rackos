@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -145,5 +146,218 @@ func TestReadinessUnavailable(t *testing.T) {
 
 	if got["status"] != "not_ready" {
 		t.Errorf("unexpected readiness status: %v", got)
+	}
+}
+
+func TestRejectNonLoopbackHTTPAddresses(t *testing.T) {
+	addresses := []string{
+		"0.0.0.0:0",
+		":0",
+		"[::]:0",
+		"192.168.1.50:0",
+		"10.0.0.50:0",
+		"172.16.0.50:0",
+		"[fd00::50]:0",
+		"localhost:0",
+		"224.0.0.1:0",
+		"invalid",
+		"127.0.0.1:-1",
+		"127.0.0.1:65536",
+		"127.0.0.1:abc",
+	}
+
+	for _, addr := range addresses {
+		t.Run(addr, func(t *testing.T) {
+			listener, err := Listen(addr)
+
+			if err == nil {
+				listener.Close()
+				t.Fatalf(
+					"invalid HTTP address accepted: %s",
+					addr,
+				)
+			}
+		})
+	}
+}
+
+func TestHTTPListenIPv4Loopback(t *testing.T) {
+	listener, err := Listen("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatal("expected TCP listener")
+	}
+
+	if !addr.IP.IsLoopback() {
+		t.Fatal("listener is not bound to loopback")
+	}
+
+	if addr.Port == 0 {
+		t.Fatal("expected an assigned port")
+	}
+}
+
+func TestHTTPListenIPv6Loopback(t *testing.T) {
+	probe, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		t.Skip("IPv6 loopback unavailable")
+	}
+	probe.Close()
+
+	listener, err := Listen("[::1]:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatal("expected TCP listener")
+	}
+
+	if !addr.IP.IsLoopback() {
+		t.Fatal("listener is not bound to loopback")
+	}
+}
+
+func TestServerWithDevices(t *testing.T) {
+	repository := &stubDeviceReader{
+		records: testDeviceRecords(),
+	}
+
+	server := NewWithDevices(
+		"127.0.0.1:0",
+		"0.1.0-test",
+		func(_ context.Context) error {
+			return nil
+		},
+		repository,
+	)
+
+	paths := []string{
+		"/healthz",
+		"/readyz",
+		"/api/v1/version",
+		"/api/v1/devices",
+		"/api/v1/devices/" + onlineDeviceID,
+		"/api/v1/devices/summary",
+	}
+
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(
+				http.MethodGet,
+				path,
+				nil,
+			)
+
+			recorder := httptest.NewRecorder()
+
+			server.Handler.ServeHTTP(
+				recorder,
+				request,
+			)
+
+			if recorder.Code != http.StatusOK {
+				t.Fatalf(
+					"expected status 200 for %s, got %d",
+					path,
+					recorder.Code,
+				)
+			}
+		})
+	}
+}
+
+func TestServerWithoutDevices(t *testing.T) {
+	server := New(
+		"127.0.0.1:0",
+		"0.1.0-test",
+		func(_ context.Context) error {
+			return nil
+		},
+	)
+
+	paths := []string{
+		"/api/v1/devices",
+		"/api/v1/devices/" + onlineDeviceID,
+		"/api/v1/devices/summary",
+	}
+
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(
+				http.MethodGet,
+				path,
+				nil,
+			)
+
+			recorder := httptest.NewRecorder()
+
+			server.Handler.ServeHTTP(
+				recorder,
+				request,
+			)
+
+			if recorder.Code != http.StatusNotFound {
+				t.Fatalf(
+					"expected status 404, got %d",
+					recorder.Code,
+				)
+			}
+		})
+	}
+}
+
+func TestIntegratedDeviceSummary(t *testing.T) {
+	server := NewWithDevices(
+		"127.0.0.1:0",
+		"0.1.0-test",
+		func(_ context.Context) error {
+			return nil
+		},
+		&stubDeviceReader{
+			records: testDeviceRecords(),
+		},
+	)
+
+	request := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/devices/summary",
+		nil,
+	)
+
+	recorder := httptest.NewRecorder()
+
+	server.Handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf(
+			"expected status 200, got %d",
+			recorder.Code,
+		)
+	}
+
+	var response deviceSummaryResponse
+
+	if err := json.Unmarshal(
+		recorder.Body.Bytes(),
+		&response,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if response.Total != 2 ||
+		response.Online != 1 ||
+		response.Offline != 1 {
+		t.Fatalf(
+			"unexpected device summary: %+v",
+			response,
+		)
 	}
 }

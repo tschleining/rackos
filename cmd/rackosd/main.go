@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/agentservice"
 	"github.com/tschleining/rackos/internal/appliance/config"
 	"github.com/tschleining/rackos/internal/appliance/database"
+	"github.com/tschleining/rackos/internal/appliance/devices"
 	"github.com/tschleining/rackos/internal/appliance/grpcserver"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 	"github.com/tschleining/rackos/internal/appliance/identity"
@@ -149,11 +149,16 @@ func run(
 		)
 	}
 
-	httpServer := httpserver.New(
+	deviceRepository := devices.NewRepository(db)
+
+	httpServer := httpserver.NewWithDevices(
 		cfg.HTTPAddr,
 		version,
 		db.PingContext,
+		deviceRepository,
 	)
+
+	logger.Info("Device management API initialized")
 
 	agentService := agentservice.New(
 		db,
@@ -170,7 +175,7 @@ func run(
 		agentservice.HeartbeatIntervalSeconds,
 	)
 
-	httpListener, err := net.Listen("tcp", cfg.HTTPAddr)
+	httpListener, err := httpserver.Listen(cfg.HTTPAddr)
 	if err != nil {
 		return fmt.Errorf("listen on HTTP address: %w", err)
 	}
