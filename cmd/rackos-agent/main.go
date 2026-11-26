@@ -78,7 +78,26 @@ func run(
 
 	command := args[0]
 
+	if command == "inventory" {
+		if len(args) == 2 &&
+			(args[1] == "--help" || args[1] == "-h") {
+			fmt.Fprintln(stdout, "Usage: rackos-agent inventory")
+			fmt.Fprintln(stdout, "")
+			fmt.Fprintln(stdout, "Collect local system and hardware inventory.")
+			return nil
+		}
+
+		if len(args) != 1 {
+			return errors.New(
+				"inventory does not accept arguments",
+			)
+		}
+
+		return runInventory(ctx, stdout)
+	}
+
 	if command != "enroll" && command != "run" {
+
 		return errors.New(
 			"unknown command; run rackos-agent help",
 		)
@@ -322,11 +341,17 @@ func printUsage(w io.Writer) {
 Usage:
   rackos-agent help
   rackos-agent version
+  rackos-agent inventory
   rackos-agent enroll --address HOST:PORT --ca FILE [--state-dir DIR]
   rackos-agent run [--state-dir DIR] [--address HOST:PORT] [--debug]
 
+The inventory command collects local system and hardware
+information without requiring enrollment or an appliance
+connection.
+
 Enrollment tokens are read from standard input.
 Agent credentials are stored in the local agent state directory.
+
 The optional run address overrides the stored appliance address
 for the current execution without modifying agent state.
 `)
