@@ -62,24 +62,38 @@ Validation enforces:
 Authentication and validation do not establish the
 accuracy of hardware information supplied by an agent.
 
+
 ### Response
 
 ReportInventoryResponse contains an accepted boolean.
 
-An accepted response currently indicates successful
-authentication and validation, not durable storage.
+On appliances supporting persistent inventory storage,
+an accepted response indicates that the inventory
+transaction has successfully committed or that an
+identical previously stored snapshot was recognized.
+
+Older validation-only appliance implementations may
+acknowledge reports without persisting them.
+
+Older snapshots are rejected to prevent overwriting
+newer hardware information.
+
+
 
 ### Status Codes
 
 | Status | Description |
 | --- | --- |
-| OK | Inventory accepted |
+| OK | Inventory committed or identical retry accepted |
 | Unauthenticated | Invalid or missing agent credential |
 | InvalidArgument | Invalid inventory snapshot |
-| Internal | Internal appliance failure |
+| FailedPrecondition | Snapshot older than stored inventory |
+| AlreadyExists | Conflicting snapshot collection timestamp |
+| Internal | Internal appliance or database failure |
 | Canceled | Request canceled |
 | DeadlineExceeded | Request deadline exceeded |
 | Unimplemented | Inventory reporting not supported |
+
 
 ### Security
 
@@ -102,14 +116,17 @@ unchanged.
 
 Older agents can operate without inventory reporting.
 
+
 ### Current Limitations
 
-- Inventory is validated but not persisted.
-- No automatic inventory reporting schedule.
-- No inventory retrieval API.
+- Only the latest inventory snapshot is retained.
+- No inventory retrieval REST API.
 - No historical inventory storage.
-- No stale snapshot overwrite protection.
+- Reporting intervals are not configurable.
+- Retry jitter is not implemented.
 
-Automatic inventory reporting will be enabled after
-persistent inventory storage is implemented.
+Agents automatically collect inventory at startup and
+refresh it every six hours after successful reporting.
 
+See inventory-storage.md for persistence and scheduling
+details.

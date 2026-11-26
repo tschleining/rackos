@@ -63,6 +63,71 @@ var migrations = []string{
 			ON DELETE CASCADE
 	);
 	`,
+
+	`
+	CREATE TABLE device_inventory (
+		device_id TEXT PRIMARY KEY NOT NULL,
+
+		hostname TEXT NOT NULL
+			CHECK(length(CAST(hostname AS BLOB)) BETWEEN 1 AND 255),
+
+		os TEXT NOT NULL
+			CHECK(length(CAST(os AS BLOB)) BETWEEN 1 AND 64),
+
+		architecture TEXT NOT NULL
+			CHECK(length(CAST(architecture AS BLOB)) BETWEEN 1 AND 64),
+
+		logical_cpus INTEGER NOT NULL
+			CHECK(logical_cpus BETWEEN 1 AND 1048576),
+
+		host_logical_cpus INTEGER NOT NULL DEFAULT 0
+			CHECK(host_logical_cpus BETWEEN 0 AND 1048576),
+
+		physical_cores INTEGER NOT NULL DEFAULT 0
+			CHECK(physical_cores BETWEEN 0 AND 1048576),
+
+		cpu_model TEXT NOT NULL DEFAULT ''
+			CHECK(length(CAST(cpu_model AS BLOB)) <= 256),
+
+		cpu_manufacturer TEXT NOT NULL DEFAULT ''
+			CHECK(length(CAST(cpu_manufacturer AS BLOB)) <= 256),
+
+		memory_bytes INTEGER NOT NULL DEFAULT 0
+			CHECK(memory_bytes >= 0),
+
+		hardware_model TEXT NOT NULL DEFAULT ''
+			CHECK(length(CAST(hardware_model AS BLOB)) <= 256),
+
+		os_version TEXT NOT NULL DEFAULT ''
+			CHECK(length(CAST(os_version AS BLOB)) <= 128),
+
+		kernel_version TEXT NOT NULL DEFAULT ''
+			CHECK(length(CAST(kernel_version AS BLOB)) <= 128),
+
+		boot_time INTEGER NOT NULL DEFAULT 0
+			CHECK(boot_time >= 0),
+
+		collected_at INTEGER NOT NULL
+			CHECK(collected_at > 0),
+
+		received_at INTEGER NOT NULL
+			CHECK(received_at > 0),
+
+		CHECK(
+			host_logical_cpus = 0
+			OR physical_cores <= host_logical_cpus
+		),
+
+		CHECK(
+			boot_time = 0
+			OR boot_time <= collected_at
+		),
+
+		FOREIGN KEY(device_id)
+			REFERENCES devices(id)
+			ON DELETE CASCADE
+	);
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
