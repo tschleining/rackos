@@ -31,6 +31,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return nil
 	}
 
+	// Dispatch device administration commands before
+	// validating enrollment-specific arguments.
+	if args[0] == "devices" {
+		return runDevices(
+			context.Background(),
+			args[1:],
+			stdout,
+			stderr,
+		)
+	}
+
 	if len(args) < 2 || args[0] != "enrollment" {
 		return errors.New(
 			"unknown command; run rackosctl help",
@@ -40,7 +51,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	command := args[1]
 
 	if command != "create" && command != "revoke" {
-		return errors.New("unknown enrollment command")
+		return errors.New(
+			"unknown command; run rackosctl help",
+		)
 	}
 
 	flags := flag.NewFlagSet(
@@ -179,6 +192,11 @@ Usage:
   rackosctl help
   rackosctl enrollment create [--ttl 15m] [--data-dir ./data]
   rackosctl enrollment revoke --id TOKEN_ID [--data-dir ./data]
+  rackosctl devices list [--data-dir DIR]
+  rackosctl devices show --id ID [--data-dir DIR]
+  rackosctl devices revoke --id ID [--data-dir DIR]
+  rackosctl devices remove --id ID --confirm [--data-dir DIR]
+  rackosctl devices help
 
 Enrollment tokens are single-use and expire automatically.
 `)
