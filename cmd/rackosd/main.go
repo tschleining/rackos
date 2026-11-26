@@ -17,6 +17,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/grpcserver"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 	"github.com/tschleining/rackos/internal/appliance/identity"
+	"github.com/tschleining/rackos/internal/appliance/pki"
 	"google.golang.org/grpc"
 )
 
@@ -98,13 +99,27 @@ func run(
 		"installation_id", installationID,
 	)
 
+	logger.Info("Initializing appliance PKI")
+
+	tlsConfig, err := pki.LoadOrCreate(
+		cfg.DataDir,
+		installationID,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize appliance PKI: %w", err)
+	}
+
+	logger.Info("Appliance PKI initialized",
+		"minimum_tls_version", "1.3",
+	)
+
 	httpServer := httpserver.New(
 		cfg.HTTPAddr,
 		version,
 		db.PingContext,
 	)
 
-	grpcServer := grpcserver.New()
+	grpcServer := grpcserver.New(tlsConfig)
 
 	httpListener, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {
@@ -145,7 +160,7 @@ func run(
 
 	logger.Info("gRPC server listening",
 		"address", grpcListener.Addr().String(),
-		"tls", false,
+		"tls", true,
 	)
 
 	logger.Info("RackOS appliance is running")

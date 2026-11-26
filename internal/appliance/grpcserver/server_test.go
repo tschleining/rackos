@@ -2,13 +2,19 @@ package grpcserver
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	rackosv1 "github.com/tschleining/rackos/api/proto/rackos/v1"
+	"github.com/tschleining/rackos/internal/appliance/pki"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
@@ -22,6 +28,7 @@ func TestRejectNonLoopbackAddresses(t *testing.T) {
 		"[::]:50051",
 		"localhost:50051",
 		"invalid",
+		"127.0.0.2:50051",
 	}
 
 	for _, addr := range addresses {
@@ -37,7 +44,32 @@ func TestRejectNonLoopbackAddresses(t *testing.T) {
 }
 
 func TestGRPCServer(t *testing.T) {
-	server := New()
+
+	dataDir := t.TempDir()
+
+	tlsConfig, err := pki.LoadOrCreate(
+		dataDir,
+		"test-appliance",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	caPEM, err := os.ReadFile(
+		filepath.Join(dataDir, "pki", pki.CAFilename),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	roots := x509.NewCertPool()
+
+	if !roots.AppendCertsFromPEM(caPEM) {
+		t.Fatal("failed to load trusted CA")
+	}
+
+	server := New(tlsConfig)
+
 	defer server.server.Stop()
 
 	listener, err := Listen("127.0.0.1:0")
@@ -55,7 +87,11 @@ func TestGRPCServer(t *testing.T) {
 	conn, err := grpc.NewClient(
 		"passthrough:///"+listener.Addr().String(),
 		grpc.WithTransportCredentials(
-			insecure.NewCredentials(),
+			credentials.NewTLS(&tls.Config{
+				MinVersion: tls.VersionTLS13,
+				RootCAs:    roots,
+				ServerName: "127.0.0.1",
+			}),
 		),
 	)
 
@@ -148,6 +184,64 @@ func TestGRPCServer(t *testing.T) {
 				"expected Unimplemented, got %v",
 				err,
 			)
+		}
+	})
+
+	t.Run("reject insecure connections", func(t *testing.T) {
+		tests := []struct {
+			name string
+			cred credentials.TransportCredentials
+		}{
+			{
+				name: "plaintext",
+				cred: insecure.NewCredentials(),
+			},
+			{
+				name: "untrusted CA",
+				cred: credentials.NewTLS(&tls.Config{
+					MinVersion: tls.VersionTLS13,
+					RootCAs:    x509.NewCertPool(),
+					ServerName: "127.0.0.1",
+				}),
+			},
+			{
+				name: "wrong hostname",
+				cred: credentials.NewTLS(&tls.Config{
+					MinVersion: tls.VersionTLS13,
+					RootCAs:    roots,
+					ServerName: "wrong.example",
+				}),
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				badConn, err := grpc.NewClient(
+					"passthrough:///"+listener.Addr().String(),
+					grpc.WithTransportCredentials(tt.cred),
+				)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer badConn.Close()
+
+				testCtx, cancel := context.WithTimeout(
+					context.Background(),
+					3*time.Second,
+				)
+				defer cancel()
+
+				client := healthpb.NewHealthClient(badConn)
+
+				_, err = client.Check(
+					testCtx,
+					&healthpb.HealthCheckRequest{},
+				)
+
+				if err == nil {
+					t.Fatal("insecure connection was accepted")
+				}
+			})
 		}
 	})
 
