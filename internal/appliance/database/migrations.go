@@ -48,6 +48,21 @@ var migrations = []string{
 	CREATE INDEX idx_enrollment_tokens_expires_at
 		ON enrollment_tokens(expires_at);
 	`,
+
+	// Migration 004: Device authentication credentials.
+	`
+	CREATE TABLE agent_credentials (
+		device_id TEXT PRIMARY KEY NOT NULL,
+		token_hash BLOB UNIQUE NOT NULL
+			CHECK(length(token_hash) = 32),
+		created_at INTEGER NOT NULL,
+		revoked_at INTEGER,
+
+		FOREIGN KEY(device_id)
+			REFERENCES devices(id)
+			ON DELETE CASCADE
+	);
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
