@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,14 +23,24 @@ const (
 	serverLifetime  = 90 * 24 * time.Hour
 )
 
+// LoadOrCreate loads the persistent appliance certificate
+// authority or creates one for a new installation.
 func LoadOrCreate(
 	dataDir string,
 	installationID string,
+	extraNames ...string,
 ) (*tls.Config, error) {
+	names, err := parseServerNames(extraNames)
+	if err != nil {
+		return nil, err
+	}
+
 	dir := filepath.Join(dataDir, "pki")
 
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, fmt.Errorf("create PKI directory: %w", err)
+		return nil, fmt.Errorf(
+			"create PKI directory: %w", err,
+		)
 	}
 
 	info, err := os.Lstat(dir)
@@ -54,8 +63,8 @@ func LoadOrCreate(
 	authority, err := loadAuthority(privatePath)
 
 	if errors.Is(err, os.ErrNotExist) {
-		// Never silently replace a missing CA signing key
-		// if its public certificate still exists.
+		// Never replace a missing signing key if the
+		// public CA certificate still exists.
 		if _, statErr := os.Lstat(publicPath); statErr == nil {
 			return nil, errors.New(
 				"CA signing key is missing",
@@ -65,14 +74,17 @@ func LoadOrCreate(
 		}
 
 		bundle, createErr := createAuthority(
-			commonName, now,
+			commonName,
+			now,
 		)
 		if createErr != nil {
 			return nil, createErr
 		}
 
 		if err := writeNew(privatePath, bundle); err != nil {
-			return nil, fmt.Errorf("persist CA: %w", err)
+			return nil, fmt.Errorf(
+				"persist CA: %w", err,
+			)
 		}
 
 		authority, err = loadAuthority(privatePath)
@@ -92,11 +104,15 @@ func LoadOrCreate(
 	if !ca.IsCA ||
 		!ca.BasicConstraintsValid ||
 		ca.KeyUsage&x509.KeyUsageCertSign == 0 {
-		return nil, errors.New("invalid CA certificate")
+		return nil, errors.New(
+			"invalid CA certificate",
+		)
 	}
 
 	if err := ca.CheckSignatureFrom(ca); err != nil {
-		return nil, fmt.Errorf("verify CA: %w", err)
+		return nil, fmt.Errorf(
+			"verify CA: %w", err,
+		)
 	}
 
 	if ca.Subject.CommonName != commonName {
@@ -106,9 +122,9 @@ func LoadOrCreate(
 	}
 
 	if now.Before(ca.NotBefore) ||
-		!ca.NotAfter.After(now.Add(serverLifetime)) {
+		!now.Before(ca.NotAfter) {
 		return nil, errors.New(
-			"CA is not valid for the server certificate lifetime",
+			"appliance CA is not currently valid",
 		)
 	}
 
@@ -118,24 +134,22 @@ func LoadOrCreate(
 	})
 
 	if err := ensurePublicCertificate(
-		publicPath, publicPEM,
+		publicPath,
+		publicPEM,
 	); err != nil {
 		return nil, err
 	}
 
-	serverCert, err := issueServerCertificate(
-		ca, authority, now,
+	return newRotatingTLSConfig(
+		ca,
+		authority,
+		names,
+		time.Now,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("issue server certificate: %w", err)
-	}
-
-	return &tls.Config{
-		MinVersion:   tls.VersionTLS13,
-		Certificates: []tls.Certificate{serverCert},
-	}, nil
 }
 
+// loadAuthority reads and validates the persisted
+// certificate authority and its private signing key.
 func loadAuthority(path string) (tls.Certificate, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -175,12 +189,15 @@ func loadAuthority(path string) (tls.Certificate, error) {
 	return pair, nil
 }
 
+// createAuthority generates a new self-signed
+// appliance certificate authority.
 func createAuthority(
 	commonName string,
 	now time.Time,
 ) ([]byte, error) {
 	key, err := ecdsa.GenerateKey(
-		elliptic.P256(), rand.Reader,
+		elliptic.P256(),
+		rand.Reader,
 	)
 	if err != nil {
 		return nil, err
@@ -233,13 +250,17 @@ func createAuthority(
 	return append(certPEM, keyPEM...), nil
 }
 
+// issueServerCertificate creates a TLS server certificate
+// signed by the persistent appliance CA.
 func issueServerCertificate(
 	ca *x509.Certificate,
 	authority tls.Certificate,
+	names serverNames,
 	now time.Time,
 ) (tls.Certificate, error) {
 	key, err := ecdsa.GenerateKey(
-		elliptic.P256(), rand.Reader,
+		elliptic.P256(),
+		rand.Reader,
 	)
 	if err != nil {
 		return tls.Certificate{}, err
@@ -250,23 +271,32 @@ func issueServerCertificate(
 		return tls.Certificate{}, err
 	}
 
+	expires := now.Add(serverLifetime)
+
+	if expires.After(ca.NotAfter) {
+		expires = ca.NotAfter
+	}
+
+	if !expires.Truncate(time.Second).After(now) {
+		return tls.Certificate{}, errors.New(
+			"CA expires too soon to issue a server certificate",
+		)
+	}
+
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName: "RackOS gRPC",
 		},
 		NotBefore: now.Add(-5 * time.Minute),
-		NotAfter:  now.Add(serverLifetime),
+		NotAfter:  expires,
 		KeyUsage:  x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
 		},
 		BasicConstraintsValid: true,
-		DNSNames:              []string{"localhost"},
-		IPAddresses: []net.IP{
-			net.ParseIP("127.0.0.1"),
-			net.ParseIP("::1"),
-		},
+		DNSNames:              names.dns,
+		IPAddresses:           names.ips,
 	}
 
 	der, err := x509.CreateCertificate(
@@ -280,12 +310,20 @@ func issueServerCertificate(
 		return tls.Certificate{}, err
 	}
 
+	leaf, err := x509.ParseCertificate(der)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
 	return tls.Certificate{
 		Certificate: [][]byte{der},
 		PrivateKey:  key,
+		Leaf:        leaf,
 	}, nil
 }
 
+// serialNumber generates a random positive
+// certificate serial number.
 func serialNumber() (*big.Int, error) {
 	limit := new(big.Int).Lsh(big.NewInt(1), 128)
 
@@ -297,6 +335,8 @@ func serialNumber() (*big.Int, error) {
 	return number.Add(number, big.NewInt(1)), nil
 }
 
+// ensurePublicCertificate restores a missing public
+// CA certificate or verifies an existing one.
 func ensurePublicCertificate(
 	path string,
 	expected []byte,
@@ -324,7 +364,8 @@ func ensurePublicCertificate(
 // an existing identity or certificate.
 func writeNew(path string, data []byte) error {
 	file, err := os.CreateTemp(
-		filepath.Dir(path), ".pki-*",
+		filepath.Dir(path),
+		".pki-*",
 	)
 	if err != nil {
 		return err

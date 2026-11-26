@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -102,17 +103,51 @@ func run(
 
 	logger.Info("Initializing appliance PKI")
 
+	bindIP, err := grpcserver.BindIP(cfg.GRPCAddr)
+	if err != nil {
+		return fmt.Errorf(
+			"validate gRPC address: %w", err,
+		)
+	}
+
+	tlsNames := []string{bindIP.String()}
+
+	if value, ok := os.LookupEnv(
+		"RACKOS_GRPC_TLS_NAMES",
+	); ok {
+		tlsNames = append(
+			tlsNames,
+			strings.Split(value, ",")...,
+		)
+	}
+
 	tlsConfig, err := pki.LoadOrCreate(
 		cfg.DataDir,
 		installationID,
+		tlsNames...,
 	)
 	if err != nil {
-		return fmt.Errorf("initialize appliance PKI: %w", err)
+		return fmt.Errorf(
+			"initialize appliance PKI: %w", err,
+		)
 	}
 
 	logger.Info("Appliance PKI initialized",
 		"minimum_tls_version", "1.3",
+		"automatic_certificate_renewal", true,
 	)
+
+	logger.Info(
+		"gRPC certificate identities configured",
+		"names", tlsNames,
+	)
+
+	if !bindIP.IsLoopback() {
+		logger.Warn(
+			"Remote agent connections enabled",
+			"address", cfg.GRPCAddr,
+		)
+	}
 
 	httpServer := httpserver.New(
 		cfg.HTTPAddr,
