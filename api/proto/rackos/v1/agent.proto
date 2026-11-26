@@ -10,6 +10,7 @@ option go_package = "github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1"
 service AgentService {
   rpc Enroll(EnrollRequest) returns (EnrollResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc ReportInventory(ReportInventoryRequest) returns (ReportInventoryResponse);
 }
 
 message DeviceInfo {
@@ -36,4 +37,36 @@ message HeartbeatRequest {
 
 message HeartbeatResponse {
   uint32 heartbeat_interval_seconds = 1;
+}
+
+
+message HardwareInventory {
+  string hostname = 1;
+  string os = 2;
+  string architecture = 3;
+
+  uint32 logical_cpus = 4;
+  uint32 host_logical_cpus = 5;
+  uint32 physical_cores = 6;
+
+  string cpu_model = 7;
+  string cpu_manufacturer = 8;
+
+  uint64 memory_bytes = 9;
+
+  string hardware_model = 10;
+  string os_version = 11;
+  string kernel_version = 12;
+
+  int64 boot_time_unix_millis = 13;
+  int64 collected_at_unix_millis = 14;
+}
+
+message ReportInventoryRequest {
+  string device_id = 1;
+  HardwareInventory inventory = 2;
+}
+
+message ReportInventoryResponse {
+  bool accepted = 1;
 }
