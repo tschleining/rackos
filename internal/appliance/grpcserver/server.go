@@ -2,12 +2,14 @@ package grpcserver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 
 	rackosv1 "github.com/tschleining/rackos/api/proto/rackos/v1"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -21,8 +23,9 @@ type agentService struct {
 	rackosv1.UnimplementedAgentServiceServer
 }
 
-func New() *Server {
+func New(tlsConfig *tls.Config) *Server {
 	server := grpc.NewServer(
+		grpc.Creds(credentials.NewTLS(tlsConfig)),
 		grpc.MaxRecvMsgSize(1<<20),
 		grpc.MaxSendMsgSize(1<<20),
 	)
@@ -63,9 +66,11 @@ func Listen(addr string) (net.Listener, error) {
 
 	ip := net.ParseIP(host)
 
-	if ip == nil || !ip.IsLoopback() {
+	if ip == nil ||
+		(!ip.Equal(net.IPv4(127, 0, 0, 1)) &&
+			!ip.Equal(net.IPv6loopback)) {
 		return nil, fmt.Errorf(
-			"gRPC requires a loopback IP address until TLS is enabled",
+			"gRPC requires 127.0.0.1 or ::1 until remote agent authentication is enabled",
 		)
 	}
 
