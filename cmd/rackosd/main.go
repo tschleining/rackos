@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tschleining/rackos/internal/appliance/agentservice"
 	"github.com/tschleining/rackos/internal/appliance/config"
 	"github.com/tschleining/rackos/internal/appliance/database"
 	"github.com/tschleining/rackos/internal/appliance/grpcserver"
@@ -119,7 +120,20 @@ func run(
 		db.PingContext,
 	)
 
-	grpcServer := grpcserver.New(tlsConfig)
+	agentService := agentservice.New(
+		db,
+		installationID,
+	)
+
+	grpcServer := grpcserver.New(
+		tlsConfig,
+		agentService,
+	)
+
+	logger.Info("Agent service initialized",
+		"heartbeat_interval_seconds",
+		agentservice.HeartbeatIntervalSeconds,
+	)
 
 	httpListener, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {

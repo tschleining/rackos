@@ -68,7 +68,7 @@ func TestGRPCServer(t *testing.T) {
 		t.Fatal("failed to load trusted CA")
 	}
 
-	server := New(tlsConfig)
+	server := New(tlsConfig, nil)
 
 	defer server.server.Stop()
 
