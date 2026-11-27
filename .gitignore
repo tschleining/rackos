@@ -40,3 +40,8 @@ web/**/.env.*.local
 
 # Generated embedded web console assets
 /internal/appliance/webconsole/dist/
+
+# Playwright test output
+/web/apps/console/test-results/
+/web/apps/console/playwright-report/
+/web/apps/console/playwright/.cache/

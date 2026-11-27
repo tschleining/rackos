@@ -31,8 +31,17 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return nil
 	}
 
-	// Dispatch device administration commands before
+	// Dispatch administrative command groups before
 	// validating enrollment-specific arguments.
+	if args[0] == "admin" {
+		return runAdmin(
+			context.Background(),
+			args[1:],
+			stdout,
+			stderr,
+		)
+	}
+
 	if args[0] == "devices" {
 		return runDevices(
 			context.Background(),
@@ -199,6 +208,10 @@ func printUsage(w io.Writer) {
 
 Usage:
   rackosctl help
+  rackosctl admin status [--data-dir DIR]
+  rackosctl admin init --username USERNAME --confirm-offline [--data-dir DIR]
+  rackosctl admin reset-password --username USERNAME --confirm-offline [--data-dir DIR]
+  rackosctl admin help
   rackosctl enrollment create [--ttl 15m] [--data-dir ./data]
   rackosctl enrollment revoke --id TOKEN_ID [--data-dir ./data]
   rackosctl devices list [--data-dir DIR]
@@ -210,5 +223,6 @@ Usage:
   rackosctl storage help
 
 Enrollment tokens are single-use and expire automatically.
+Administrator passwords are entered interactively.
 `)
 }

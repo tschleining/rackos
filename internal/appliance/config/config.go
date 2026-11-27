@@ -12,21 +12,22 @@ import (
 )
 
 type Config struct {
-	HTTPAddr string
-	GRPCAddr string
-	DataDir  string
-	LogLevel slog.Level
+	HTTPAddr      string
+	GRPCAddr      string
+	DataDir       string
+	LogLevel      slog.Level
+	ManagementTLS bool
 
 	PerformanceRetention retention.Policy
 }
 
 func Default() Config {
 	return Config{
-		HTTPAddr: "127.0.0.1:8080",
-		GRPCAddr: "127.0.0.1:50051",
-		DataDir:  "./data",
-		LogLevel: slog.LevelInfo,
-
+		HTTPAddr:             "127.0.0.1:8080",
+		GRPCAddr:             "127.0.0.1:50051",
+		DataDir:              "./data",
+		LogLevel:             slog.LevelInfo,
+		ManagementTLS:        false,
 		PerformanceRetention: retention.DefaultPolicy(),
 	}
 }
@@ -72,6 +73,18 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		default:
 			return Config{}, fmt.Errorf(
 				"invalid RACKOS_LOG_LEVEL: %q", value,
+			)
+		}
+	}
+	if value, ok := lookup("RACKOS_MANAGEMENT_TLS"); ok {
+		switch value {
+		case "true":
+			cfg.ManagementTLS = true
+		case "false":
+			cfg.ManagementTLS = false
+		default:
+			return Config{}, fmt.Errorf(
+				"RACKOS_MANAGEMENT_TLS must be true or false",
 			)
 		}
 	}

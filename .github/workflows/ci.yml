@@ -57,3 +57,61 @@ jobs:
 
       - name: Build
         run: go build ./...
+
+  validate-console:
+    name: Validate Web Console
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Verify tool versions
+        run: |
+          go version
+          node --version
+          npm --version
+
+      - name: Build integrated appliance
+        run: ./scripts/build-appliance.sh
+
+      - name: Run frontend unit tests
+        run: npm --prefix web run test
+
+      - name: Validate embedded appliance
+        run: |
+          go vet -tags webconsole ./...
+          go test -tags webconsole -race -count=1 ./...
+
+      - name: Install Chromium
+        working-directory: web
+        run: |
+          npm exec --workspace=@rackos/console -- \
+            playwright install --with-deps chromium
+
+      - name: Install isolated certificate tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3-tools
+
+      - name: Run HTTP browser tests
+        run: npm --prefix web run test:e2e
+
+      - name: Run verified HTTPS browser tests
+        run: ./scripts/test-console-https.sh

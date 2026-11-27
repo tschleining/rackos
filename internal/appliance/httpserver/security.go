@@ -64,8 +64,19 @@ func protectLocalManagement(
 func isLocalManagementRequest(
 	r *http.Request,
 ) bool {
+	scheme := "http"
+	defaultPort := 80
+
+	// Trust the actual TLS connection, not headers
+	// supplied by a client or reverse proxy.
+	if r.TLS != nil {
+		scheme = "https"
+		defaultPort = 443
+	}
+
 	ip, port, ok := parseLocalManagementHost(
 		r.Host,
+		defaultPort,
 	)
 	if !ok {
 		return false
@@ -88,21 +99,21 @@ func isLocalManagementRequest(
 		}
 	}
 
-	expectedOrigin := "http://" +
+	expectedOrigin := scheme + "://" +
 		net.JoinHostPort(
 			ip.String(),
 			strconv.Itoa(port),
 		)
 
-	// Browsers omit the default HTTP port
-	// when serializing an origin.
-	if port == 80 {
+	// Browsers omit the default port when
+	// serializing an origin.
+	if port == defaultPort {
 		if ip.Is6() {
-			expectedOrigin =
-				"http://[" + ip.String() + "]"
+			expectedOrigin = scheme +
+				"://[" + ip.String() + "]"
 		} else {
-			expectedOrigin =
-				"http://" + ip.String()
+			expectedOrigin = scheme +
+				"://" + ip.String()
 		}
 	}
 
@@ -130,27 +141,26 @@ func isLocalManagementRequest(
 			// user-initiated navigation.
 
 		default:
-			// Reject cross-site, same-site,
-			// malformed and unknown values.
 			return false
 		}
 	}
 
-	// Non-browser clients such as curl may
-	// legitimately omit browser metadata.
+	// Non-browser clients may legitimately
+	// omit browser metadata.
 	return true
 }
 
 func parseLocalManagementHost(
 	authority string,
+	defaultPort int,
 ) (netip.Addr, int, bool) {
 	host, portText, err :=
 		net.SplitHostPort(authority)
 
+	explicitPort := err == nil
+
 	if err != nil {
-		// An authority without a port uses
-		// the default HTTP port.
-		portText = "80"
+		portText = strconv.Itoa(defaultPort)
 
 		switch {
 		case strings.HasPrefix(authority, "[") &&
@@ -178,9 +188,6 @@ func parseLocalManagementHost(
 		return netip.Addr{}, 0, false
 	}
 
-	// Reject alternate, non-canonical address
-	// representations to keep origin matching
-	// unambiguous.
 	if ip.String() != host {
 		return netip.Addr{}, 0, false
 	}
@@ -194,6 +201,25 @@ func parseLocalManagementHost(
 	if err != nil ||
 		port == 0 ||
 		strconv.FormatUint(port, 10) != portText {
+		return netip.Addr{}, 0, false
+	}
+
+	// Reject malformed authorities, including
+	// bracketed IPv4 addresses.
+	canonical := ip.String()
+
+	if ip.Is6() {
+		canonical = "[" + canonical + "]"
+	}
+
+	if explicitPort {
+		canonical = net.JoinHostPort(
+			ip.String(),
+			portText,
+		)
+	}
+
+	if authority != canonical {
 		return netip.Addr{}, 0, false
 	}
 

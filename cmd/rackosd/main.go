@@ -209,6 +209,35 @@ func run(
 		"embedded", consoleEnabled,
 	)
 
+	if cfg.ManagementTLS {
+		managementTLSConfig, err :=
+			pki.LoadOrCreateManagement(
+				cfg.DataDir,
+				installationID,
+				cfg.HTTPAddr,
+			)
+		if err != nil {
+			return fmt.Errorf(
+				"initialize management TLS: %w",
+				err,
+			)
+		}
+
+		httpServer.TLSConfig = managementTLSConfig
+
+		logger.Info(
+			"Management TLS initialized",
+			"minimum_tls_version", "1.3",
+			"ca_certificate",
+			pki.ManagementCAPath(cfg.DataDir),
+		)
+	} else {
+		logger.Warn(
+			"Management TLS disabled",
+			"mode", "read-only HTTP",
+		)
+	}
+
 	logger.Info("Device management API initialized")
 
 	logger.Info("Performance management API initialized")
@@ -284,9 +313,23 @@ func run(
 	serverResults := make(chan serverResult, 2)
 
 	go func() {
+		var serveErr error
+
+		if cfg.ManagementTLS {
+			serveErr = httpServer.ServeTLS(
+				httpListener,
+				"",
+				"",
+			)
+		} else {
+			serveErr = httpServer.Serve(
+				httpListener,
+			)
+		}
+
 		serverResults <- serverResult{
 			name: "HTTP",
-			err:  httpServer.Serve(httpListener),
+			err:  serveErr,
 		}
 	}()
 
@@ -297,8 +340,9 @@ func run(
 		}
 	}()
 
-	logger.Info("HTTP server listening",
+	logger.Info("Management server listening",
 		"address", httpListener.Addr().String(),
+		"tls", cfg.ManagementTLS,
 	)
 
 	logger.Info("gRPC server listening",

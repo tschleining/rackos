@@ -11,10 +11,30 @@ import (
 
 const renewBefore = 30 * 24 * time.Hour
 
+// newRotatingTLSConfig preserves the existing agent
+// TLS certificate configuration.
 func newRotatingTLSConfig(
 	ca *x509.Certificate,
 	authority tls.Certificate,
 	names serverNames,
+	clock func() time.Time,
+) (*tls.Config, error) {
+	return newRotatingTLSConfigForService(
+		ca,
+		authority,
+		names,
+		"RackOS gRPC",
+		clock,
+	)
+}
+
+// newRotatingTLSConfigForService manages certificate
+// renewal for an independently configured service.
+func newRotatingTLSConfigForService(
+	ca *x509.Certificate,
+	authority tls.Certificate,
+	names serverNames,
+	commonName string,
 	clock func() time.Time,
 ) (*tls.Config, error) {
 	var mu sync.Mutex
@@ -58,11 +78,13 @@ func newRotatingTLSConfig(
 			ca,
 			authority,
 			names,
+			commonName,
 			now,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"issue server certificate: %w", err,
+				"issue server certificate: %w",
+				err,
 			)
 		}
 
@@ -71,8 +93,8 @@ func newRotatingTLSConfig(
 		return current, nil
 	}
 
-	// Issue the initial certificate during startup so
-	// certificate generation failures prevent startup.
+	// Issue the initial certificate during startup
+	// so certificate failures prevent startup.
 	if _, err := getCertificate(nil); err != nil {
 		return nil, err
 	}

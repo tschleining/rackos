@@ -30,11 +30,12 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "Starting isolated RackOS browser-test appliance"
+echo "Starting isolated RackOS HTTP browser-test appliance"
 
 RACKOS_DATA_DIR="$TEST_ROOT" \
 RACKOS_HTTP_ADDR=127.0.0.1:18780 \
 RACKOS_GRPC_ADDR=127.0.0.1:18751 \
+RACKOS_MANAGEMENT_TLS=false \
 RACKOS_PERFORMANCE_RETENTION=0s \
 RACKOS_LOG_LEVEL=info \
 "$BINARY" &

@@ -230,3 +230,11 @@ func TestUpgradeFromVersionOne(t *testing.T) {
 		t.Fatal("expected empty devices table")
 	}
 }
+func openRawExistingTestDatabase(
+	dir string,
+) (*sql.DB, error) {
+	return sql.Open(
+		"sqlite",
+		filepath.Join(dir, Filename),
+	)
+}
