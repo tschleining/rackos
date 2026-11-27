@@ -304,6 +304,41 @@ otherwise valid.
 Existing historical samples are not overwritten by
 new reports.
 
+
+### Historical Retention
+
+The appliance may automatically delete historical
+performance samples according to its configured
+retention policy.
+
+Expiration is based on appliance receipt timestamps
+rather than agent collection timestamps.
+
+Automatic retention does not modify the reporting
+RPC contract or require agent reenrollment.
+
+Identical retries preserve the original receipt
+timestamp while the original sample remains stored.
+
+If the original sample has been deleted, a subsequent
+report with the same sample identity may be accepted
+as a new historical record when authentication and
+validation succeed.
+
+The newly accepted record receives a new appliance
+receipt timestamp.
+
+Successful acknowledgement establishes persistence
+at the time of acknowledgement, not indefinite
+historical availability.
+
+The appliance does not maintain permanent
+deduplication records for expired samples.
+
+See [Historical Performance Retention](performance-retention.md)
+for expiration policy and storage management.
+
+
 ### Automatic Reporting
 
 Agents collect performance measurements at startup.
@@ -362,7 +397,7 @@ retry behavior, and current limitations.
 
 Successfully acknowledged performance samples
 are available through the appliance's read-only
-Management API.
+Management API while the samples remain stored.
 
 The Management API supports:
 

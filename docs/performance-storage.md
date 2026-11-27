@@ -72,10 +72,14 @@ A separate index contains:
 
     received_at
 
-The receipt timestamp index supports future retention
-and cleanup operations.
+The receipt timestamp index supports automatic retention
+and bounded historical cleanup operations.
 
-Retention policies are not implemented yet.
+Retention uses appliance receipt timestamps rather than
+agent collection timestamps.
+
+See [Historical Performance Retention](performance-retention.md)
+for configuration and expiration behavior.
 
 ## Payload Serialization
 
@@ -117,8 +121,11 @@ Sample identities are scoped to individual devices.
 
 ## Historical Ordering
 
-Performance storage is append-only through the
-reporting repository.
+Performance reporting inserts independent historical
+records without overwriting existing measurements.
+
+Historical records may subsequently be removed by
+automatic retention or device removal.
 
 Unlike hardware inventory, an older performance
 snapshot does not overwrite a newer snapshot.
@@ -133,6 +140,13 @@ snapshot does not overwrite a newer snapshot.
 
 Identical retries preserve the original receipt
 timestamp and serialized payload.
+
+Idempotency applies while the original sample remains
+stored.
+
+A sample identity may be accepted again after its
+original historical record has been removed by
+retention.
 
 Decoded Protocol Buffers messages are compared when
 resolving duplicate sample identities.
@@ -194,8 +208,12 @@ until its actual page is requested.
 Continuation positions do not require the original
 cursor record to remain stored.
 
-This allows pagination to remain compatible with
-future historical retention policies.
+This allows historical pagination to remain compatible
+with automatic retention.
+
+Expired records are omitted from subsequent pages.
+Continuation cursors remain usable after the original
+cursor record has been deleted.
 
 Historical pagination operates against live data
 rather than a frozen database snapshot.
@@ -404,7 +422,8 @@ against unauthorized access.
 Revoking a device credential prevents future
 authenticated reporting.
 
-Existing historical performance records remain stored.
+Existing historical performance records remain stored
+subject to the configured retention policy.
 
 Removing a registered device deletes its associated
 performance history through SQLite foreign key
@@ -447,9 +466,37 @@ requiring another enrollment.
 Agent restarts preserve previously committed history
 but discard unacknowledged reports held in memory.
 
+
 ## Inspecting Historical Records
 
-For local development and troubleshooting:
+The administrative storage command provides a read-only
+summary of historical performance storage and SQLite
+file and page utilization.
+
+```bash
+./bin/rackosctl storage stats --data-dir ./data
+```
+
+The command reports:
+
+- Historical sample counts.
+- Distinct reporting device counts.
+- Serialized performance payload bytes.
+- Collection and receipt timestamp ranges.
+- SQLite database, WAL, and SHM file sizes.
+- Logical SQLite page counts and reusable capacity.
+
+The command requires an existing database with the
+current appliance schema.
+
+It does not initialize a database or apply migrations.
+
+See [Historical Performance Retention](performance-retention.md)
+for configuration, cleanup behavior, and storage report
+interpretation.
+
+Direct database inspection remains available for local
+development and troubleshooting:
 
 ```bash
 sqlite3 -readonly -header -column data/rackos.db '
@@ -467,29 +514,11 @@ ORDER BY collected_at, sample_id;
 '
 ```
 
-Inspect historical storage totals:
-
-```bash
-sqlite3 -readonly -header -column data/rackos.db '
-SELECT
-    COUNT(*) AS historical_samples,
-    COUNT(DISTINCT device_id) AS devices,
-    SUM(length(payload)) AS total_payload_bytes
-FROM device_performance;
-'
-```
-
 The database path must match the configured appliance
 data directory.
 
-SQLite WAL-mode databases may require writable journal
-access even for inspection after appliance shutdown.
-
-If read-only access fails, verify the database exists
-before opening it normally for SELECT queries.
-
-Direct database inspection remains available for
-local development and troubleshooting.
+SQLite WAL-mode databases may require access to
+auxiliary journal files during read-only inspection.
 
 Applications should retrieve historical measurements
 through the documented Management API rather than
@@ -550,20 +579,27 @@ go test -race -count=1 -v \
   ./internal/agent/client/
 ```
 
+
 ## Current Limitations
 
 - No configurable performance reporting interval.
 - No configurable retry policy.
 - No retry jitter.
 - No persistent offline report queue.
-- No historical performance retention policy.
-- No automatic historical cleanup or downsampling.
+- No per-device historical retention policy.
+- No historical downsampling or aggregation.
+- No strict database size quota.
+- No automatic physical database compaction.
+- No permanent deduplication of expired samples.
 - No management console visualization.
 - No performance alerting or threshold evaluation.
 - No Windows native performance collection.
 
-Historical records accumulate until devices are
-removed or a future retention policy is introduced.
+Automatic historical retention is available but
+disabled by default.
+
+Historical records accumulate while retention is
+disabled unless their associated devices are removed.
 
 Disk usage must be monitored during extended
 development deployments.
@@ -571,5 +607,9 @@ development deployments.
 The current implementation is intended for
 pre-alpha development and testing.
 
-See performance-metrics.md for collection details
-and agent-protocol.md for reporting protocol details.
+See [Historical Performance Retention](performance-retention.md)
+for expiration policy and storage administration.
+
+See [Performance Metrics](performance-metrics.md) for
+collection details and [Agent Protocol](agent-protocol.md)
+for reporting protocol details.

@@ -21,6 +21,8 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/identity"
 	"github.com/tschleining/rackos/internal/appliance/performance"
 	"github.com/tschleining/rackos/internal/appliance/pki"
+	"github.com/tschleining/rackos/internal/appliance/retention"
+
 	"google.golang.org/grpc"
 )
 
@@ -60,6 +62,13 @@ func run(
 	cfg config.Config,
 	logger *slog.Logger,
 ) error {
+	if err := cfg.PerformanceRetention.Validate(); err != nil {
+		return fmt.Errorf(
+			"validate performance retention configuration: %w",
+			err,
+		)
+	}
+
 	logger.Info("Starting RackOS appliance",
 		"version", version,
 	)
@@ -69,6 +78,14 @@ func run(
 		"grpc_addr", cfg.GRPCAddr,
 		"data_dir", cfg.DataDir,
 		"log_level", cfg.LogLevel.String(),
+		"performance_retention_enabled",
+		cfg.PerformanceRetention.Enabled(),
+		"performance_retention",
+		cfg.PerformanceRetention.RetentionDuration.String(),
+		"performance_cleanup_interval",
+		cfg.PerformanceRetention.CleanupInterval.String(),
+		"performance_cleanup_batch_size",
+		cfg.PerformanceRetention.BatchSize,
 	)
 
 	logger.Info("Initializing database",
@@ -154,6 +171,18 @@ func run(
 
 	performanceRepository := performance.NewRepository(db)
 
+	retentionWorker, err := retention.NewWorker(
+		cfg.PerformanceRetention,
+		performanceRepository,
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"initialize performance retention worker: %w",
+			err,
+		)
+	}
+
 	httpServer := httpserver.NewWithManagement(
 		cfg.HTTPAddr,
 		version,
@@ -189,9 +218,43 @@ func run(
 
 	grpcListener, err := grpcserver.Listen(cfg.GRPCAddr)
 	if err != nil {
-		return err
+		return fmt.Errorf("listen on gRPC address: %w", err)
 	}
 	defer grpcListener.Close()
+
+	// Start retention only after both network
+	// listeners have been initialized successfully.
+	retentionCtx, cancelRetention := context.WithCancel(ctx)
+
+	retentionDone := make(chan struct{})
+
+	// Always join the worker before the deferred
+	// database closure, including unexpected exits.
+	defer func() {
+		cancelRetention()
+		<-retentionDone
+	}()
+
+	if cfg.PerformanceRetention.Enabled() {
+		go func() {
+			defer close(retentionDone)
+
+			if err := retentionWorker.Run(
+				retentionCtx,
+			); err != nil {
+				logger.Error(
+					"Performance retention worker exited unexpectedly",
+					"error", err,
+				)
+			}
+		}()
+	} else {
+		close(retentionDone)
+
+		logger.Info(
+			"Performance retention disabled",
+		)
+	}
 
 	type serverResult struct {
 		name string
@@ -250,6 +313,11 @@ func run(
 
 	logger.Info("Shutting down RackOS appliance")
 
+	// Cancel retention even when shutdown was
+	// caused by a network server failure rather
+	// than cancellation of the parent context.
+	cancelRetention()
+
 	shutdownCtx, cancel := context.WithTimeout(
 		context.Background(),
 		10*time.Second,
@@ -297,6 +365,10 @@ func run(
 			),
 		)
 	}
+
+	// Wait for retention to finish before allowing
+	// run to return and close the SQLite database.
+	<-retentionDone
 
 	if runErr != nil {
 		return runErr
