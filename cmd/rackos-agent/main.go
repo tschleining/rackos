@@ -341,7 +341,7 @@ func runAgent(
 		"appliance", address,
 	)
 
-	err = connection.RunWithInventory(
+	err = connection.RunWithMonitoring(
 		ctx,
 		saved.DeviceID,
 		saved.AgentToken,
