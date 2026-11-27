@@ -6,8 +6,9 @@ A local-first infrastructure monitoring platform for home labs.
 
 RackOS currently provides a working Go-based appliance,
 authenticated agent enrollment, heartbeat monitoring,
-hardware inventory persistence, and historical
-performance reporting.
+hardware inventory persistence, historical performance
+reporting, and a read-only local management API for
+device status and performance measurements.
 
 The project remains under active development and is
 not yet a supported production release. Planned
@@ -61,10 +62,11 @@ internal/
     devices/            # Device management and repositories
     enrollment/         # Enrollment token management
     grpcserver/         # gRPC agent server
-    httpserver/         # HTTP management API
+    httpserver/         # Device and performance management API
+    performance/        # Historical performance validation, persistence and queries
     identity/           # Appliance identity
     inventory/          # Hardware inventory validation and persistence
-    performance/        # Historical performance validation and persistence
+    performance/        # Historical performance validation, persistence and queries
     pki/                # PKI and certificate rotation
 
   agent/
@@ -169,6 +171,52 @@ to untrusted networks.
 Local metrics collection does not require enrollment
 or a running appliance.
 
+#### Management API
+
+The appliance provides a read-only HTTP management
+API on its configured loopback address.
+
+The default base URL is:
+
+    http://127.0.0.1:8080
+
+Retrieve registered devices:
+
+```bash
+curl -fsS http://127.0.0.1:8080/api/v1/devices
+```
+
+Retrieve the latest performance snapshot:
+
+```bash
+curl -fsS \
+  "http://127.0.0.1:8080/api/v1/devices/$DEVICE_ID/performance/latest"
+```
+
+Retrieve historical performance measurements:
+
+```bash
+curl -fsS \
+  "http://127.0.0.1:8080/api/v1/devices/$DEVICE_ID/performance/history?limit=10"
+```
+
+Set `DEVICE_ID` to an actual registered device ID.
+
+Historical retrieval supports time-range filtering
+and cursor-based pagination.
+
+Performance responses preserve 64-bit counter
+precision and optional measurement availability.
+
+The Management API does not currently implement
+administrator authentication or HTTPS.
+
+Do not expose it through a reverse proxy, port
+forwarding, or other remote access mechanism.
+
+See [Management API](docs/management-api.md) for
+the complete endpoint and response contract.
+
 #### Validation
 
 ```bash
@@ -183,16 +231,50 @@ device administration, protocol details, and
 historical performance storage.
 
 
-Security
-RackOS is intended to monitor sensitive home-lab infrastructure. The initial security model is:
-- Read-only metrics collection by default; no general-purpose remote shell.
-- Explicit approval before agents acquire credentials.
-- Unique cryptographic identities for agents and mutual TLS for agent connections.
-- Protected local credential storage, with rotation and revocation.
-- No trust based solely on IP address, hostname or discovery announcements.
-- Permission-scoped integrations and isolation for untrusted extensions.
-- Auditable enrollment and administrative actions.
-Please do not publish vulnerability details or secrets in public issues. A private vulnerability-reporting process will be documented before an initial public release.
+### Security
+
+RackOS is intended to monitor sensitive home-lab
+infrastructure.
+
+The currently implemented security controls include:
+
+- Read-only agent metrics collection.
+- No general-purpose remote shell.
+- Short-lived, one-time enrollment invitations.
+- Verified appliance identity and TLS 1.3 transport.
+- Individual agent bearer credentials.
+- Protected local credential storage.
+- Appliance certificate renewal.
+- Agent credential revocation.
+- Authenticated and validated telemetry ingestion.
+- Transactional performance persistence.
+- Loopback-only read-only HTTP management access.
+- No trust based solely on IP addresses, hostnames,
+  or discovery announcements.
+
+The Management API currently operates without
+administrator authentication or HTTPS.
+
+Remote management access must remain disabled.
+
+Planned security capabilities include:
+
+- Administrator authentication.
+- Management HTTPS.
+- Browser-origin protections.
+- Explicit interactive agent approval.
+- Mutually authenticated agent TLS.
+- Automatic agent credential renewal.
+- Permission-scoped integrations.
+- Isolation for untrusted extensions.
+- Auditable administrative actions.
+
+Please do not publish vulnerability details or
+secrets in public issues.
+
+A private vulnerability-reporting process will be
+documented before an initial public release.
+
 Contributing
 Contributions, design discussions, integration proposals and documentation improvements are welcome as the project takes shape. Until contributor guidance is published, please open a discussion or issue before starting substantial changes. Compatibility and security contracts should be reviewed before external plugin interfaces are stabilized.
 Open source and commercial hardware
@@ -234,3 +316,21 @@ The RackOS name is a working name and requires a trademark/name clearance review
 - Credential revocation enforcement for performance reporting.
 - Cascading historical record deletion during device removal.
 - Native performance reporting end-to-end tests.
+- Latest collected performance snapshot retrieval.
+- Device-specific historical performance queries.
+- Inclusive and exclusive historical time bounds.
+- Deterministic historical sample ordering.
+- Indexed SQLite historical queries.
+- Bounded historical page sizes.
+- Keyset-based historical pagination.
+- Versioned Base64URL continuation cursors.
+- Device-bound and time-range-bound cursors.
+- Historical cursor persistence across appliance restarts.
+- Strict HTTP performance query validation.
+- Precision-preserving protobuf JSON serialization.
+- Optional measurement availability preservation.
+- Empty historical response array guarantees.
+- Stored historical payload integrity validation.
+- Read-only performance management HTTP endpoints.
+- Sanitized management API error responses.
+- SQLite-backed performance API integration tests.

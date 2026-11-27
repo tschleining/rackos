@@ -16,7 +16,12 @@ func New(
 	version string,
 	check ReadinessCheck,
 ) *http.Server {
-	return NewWithDevices(addr, version, check, nil)
+	return NewWithDevices(
+		addr,
+		version,
+		check,
+		nil,
+	)
 }
 
 func NewWithDevices(
@@ -25,10 +30,34 @@ func NewWithDevices(
 	check ReadinessCheck,
 	repository DeviceReader,
 ) *http.Server {
+	return NewWithManagement(
+		addr,
+		version,
+		check,
+		repository,
+		nil,
+	)
+}
 
+// NewWithManagement creates an HTTP server with
+// optional device and performance management APIs.
+func NewWithManagement(
+	addr string,
+	version string,
+	check ReadinessCheck,
+	deviceRepository DeviceReader,
+	performanceRepository PerformanceReader,
+) *http.Server {
 	return &http.Server{
-		Addr:              addr,
-		Handler:           NewHandlerWithDevices(version, check, repository),
+		Addr: addr,
+
+		Handler: NewHandlerWithManagement(
+			version,
+			check,
+			deviceRepository,
+			performanceRepository,
+		),
+
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -41,7 +70,11 @@ func NewHandler(
 	version string,
 	check ReadinessCheck,
 ) http.Handler {
-	return NewHandlerWithDevices(version, check, nil)
+	return NewHandlerWithDevices(
+		version,
+		check,
+		nil,
+	)
 }
 
 func NewHandlerWithDevices(
@@ -49,36 +82,90 @@ func NewHandlerWithDevices(
 	check ReadinessCheck,
 	repository DeviceReader,
 ) http.Handler {
+	return NewHandlerWithManagement(
+		version,
+		check,
+		repository,
+		nil,
+	)
+}
 
+// NewHandlerWithManagement creates the management
+// API router.
+//
+// Performance routes require both a device reader
+// and a performance reader because device
+// registration must be verified before retrieval.
+func NewHandlerWithManagement(
+	version string,
+	check ReadinessCheck,
+	deviceRepository DeviceReader,
+	performanceRepository PerformanceReader,
+) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /healthz", handleHealth)
-	mux.HandleFunc("GET /readyz", handleReady(check))
+	mux.HandleFunc(
+		"GET /healthz",
+		handleHealth,
+	)
 
-	mux.HandleFunc("GET /api/v1/version",
+	mux.HandleFunc(
+		"GET /readyz",
+		handleReady(check),
+	)
+
+	mux.HandleFunc(
+		"GET /api/v1/version",
 		func(w http.ResponseWriter, r *http.Request) {
-			writeJSON(w, http.StatusOK, map[string]string{
-				"name":    "RackOS",
-				"version": version,
-			})
+			writeJSON(
+				w,
+				http.StatusOK,
+				map[string]string{
+					"name":    "RackOS",
+					"version": version,
+				},
+			)
 		},
 	)
 
-	if repository != nil {
-		registerDeviceRoutes(mux, repository)
+	if deviceRepository != nil {
+		registerDeviceRoutes(
+			mux,
+			deviceRepository,
+		)
+
+		if performanceRepository != nil {
+			registerPerformanceRoutes(
+				mux,
+				deviceRepository,
+				performanceRepository,
+			)
+		}
 	}
 
 	return mux
 }
 
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{
-		"status": "healthy",
-	})
+func handleHealth(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	writeJSON(
+		w,
+		http.StatusOK,
+		map[string]string{
+			"status": "healthy",
+		},
+	)
 }
 
-func handleReady(check ReadinessCheck) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func handleReady(
+	check ReadinessCheck,
+) http.HandlerFunc {
+	return func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
 		ctx, cancel := context.WithTimeout(
 			r.Context(),
 			2*time.Second,
@@ -96,15 +183,28 @@ func handleReady(check ReadinessCheck) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{
-			"status": "ready",
-		})
+		writeJSON(
+			w,
+			http.StatusOK,
+			map[string]string{
+				"status": "ready",
+			},
+		)
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
+func writeJSON(
+	w http.ResponseWriter,
+	status int,
+	data any,
+) {
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
 	w.WriteHeader(status)
+
 	_ = json.NewEncoder(w).Encode(data)
 }
 
@@ -116,7 +216,8 @@ func Listen(addr string) (net.Listener, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"invalid HTTP address: %w", err,
+			"invalid HTTP address: %w",
+			err,
 		)
 	}
 
@@ -131,7 +232,8 @@ func Listen(addr string) (net.Listener, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"listen on HTTP address: %w", err,
+			"listen on HTTP address: %w",
+			err,
 		)
 	}
 
