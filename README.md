@@ -137,3 +137,10 @@ The RackOS name is a working name and requires a trademark/name clearance review
 - Unified CPU, memory, and storage performance snapshots.
 - CGO-free native macOS storage collection through IOKit.
 - Disk counter regression and device change handling.
+- Native network interface monitoring on Linux and macOS.
+- Physical, virtual, bridge, VPN, and loopback interface support.
+- Network interface metadata and optional link speeds.
+- Cumulative network byte, packet, error, and drop counters.
+- Network throughput and packets-per-second measurements.
+- Network interface identity and counter regression handling.
+- Unified CPU, memory, storage, and network performance snapshots.

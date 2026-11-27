@@ -65,3 +65,15 @@ func readDiskUsage(
 		ErrUnsupportedPlatform,
 	)
 }
+func readNetworkUsage(
+	ctx context.Context,
+) ([]NetworkInterfaceUsage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf(
+		"collect network statistics: %w",
+		ErrUnsupportedPlatform,
+	)
+}

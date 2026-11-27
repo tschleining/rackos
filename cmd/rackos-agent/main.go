@@ -100,15 +100,18 @@ func run(
 		if len(args) == 2 &&
 			(args[1] == "--help" || args[1] == "-h") {
 			fmt.Fprintln(stdout, "Usage: rackos-agent metrics")
-			fmt.Fprintln(stdout, "")
-			fmt.Fprintln(stdout, "Collect local CPU, memory, and storage metrics.")
-			fmt.Fprintln(stdout, "")
-			fmt.Fprintln(stdout, "Measurements include:")
+			fmt.Fprintln(stdout)
+			fmt.Fprintln(stdout, "Collect local system performance metrics.")
+			fmt.Fprintln(stdout)
+			fmt.Fprintln(stdout, "Measurements:")
 			fmt.Fprintln(stdout, "  CPU utilization")
 			fmt.Fprintln(stdout, "  Memory utilization")
 			fmt.Fprintln(stdout, "  Mounted filesystem capacity")
 			fmt.Fprintln(stdout, "  Cumulative disk I/O counters")
 			fmt.Fprintln(stdout, "  Disk throughput and operations per second")
+			fmt.Fprintln(stdout, "  Network interface metadata and link speeds")
+			fmt.Fprintln(stdout, "  Cumulative network activity counters")
+			fmt.Fprintln(stdout, "  Network throughput and packets per second")
 
 			return nil
 		}
