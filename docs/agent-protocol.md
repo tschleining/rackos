@@ -356,3 +356,30 @@ an agent.
 
 See performance-storage.md for historical persistence,
 retry behavior, and current limitations.
+
+
+### Historical Performance Access
+
+Successfully acknowledged performance samples
+are available through the appliance's read-only
+Management API.
+
+The Management API supports:
+
+- Latest collected performance snapshot retrieval.
+- Historical time-range filtering.
+- Cursor-based historical pagination.
+- Precision-preserving JSON serialization.
+
+Management API access is separate from the
+authenticated agent gRPC reporting protocol.
+
+Agents do not require Management API access
+to submit performance measurements.
+
+Management API retrieval does not modify agent
+credentials, device heartbeat timestamps, or
+stored performance snapshots.
+
+See [management-api.md](management-api.md) for
+endpoint definitions and response formats.

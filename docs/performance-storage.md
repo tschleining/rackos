@@ -57,8 +57,16 @@ The historical query index contains:
 
     device_id, collected_at, sample_id
 
-This index supports device-specific chronological
-retrieval and future time-range queries.
+This index supports device-specific latest retrieval,
+historical time-range filtering, deterministic
+ordering, and keyset pagination.
+
+Queries traverse the collection timestamp and sample
+identity in descending order.
+
+The index avoids requiring a separate temporary
+sorting structure for the supported historical
+retrieval queries.
 
 A separate index contains:
 
@@ -131,6 +139,124 @@ resolving duplicate sample identities.
 
 Conflicting samples return the AlreadyExists gRPC
 status.
+
+## Historical Retrieval
+
+The performance repository provides three read
+operations:
+
+| Operation | Description |
+| --- | --- |
+| Get | Retrieve a specific performance sample |
+| Latest | Retrieve the latest collected sample |
+| History | Retrieve a bounded historical page |
+
+Latest and historical retrieval use the indexed
+collection timestamp rather than the appliance
+receipt timestamp.
+
+When indexed collection timestamps are identical,
+sample identities provide deterministic descending
+lexicographical ordering.
+
+Original protobuf collection timestamp precision
+is preserved in returned records.
+
+Historical time ranges support inclusive lower
+bounds and exclusive upper bounds.
+
+Queries are restricted to individual device
+identities.
+
+The default historical page size is 10 samples.
+
+The maximum historical page size is 25 samples.
+
+## Historical Pagination
+
+Historical retrieval uses keyset pagination.
+
+A continuation position contains:
+
+- Indexed collection timestamp in Unix milliseconds.
+- Sample identity.
+
+Subsequent pages retrieve records ordered strictly
+after the continuation position in descending
+historical order.
+
+The repository requests one additional record to
+determine whether another page exists.
+
+The additional record is not decoded or validated
+until its actual page is requested.
+
+Continuation positions do not require the original
+cursor record to remain stored.
+
+This allows pagination to remain compatible with
+future historical retention policies.
+
+Historical pagination operates against live data
+rather than a frozen database snapshot.
+
+Newly ingested measurements may become visible
+between page requests depending on their position
+relative to the continuation cursor.
+
+## Historical Retrieval Integrity
+
+All returned performance records undergo stored
+payload decoding and validation.
+
+Validation includes:
+
+- Supported payload format version.
+- Stored payload size.
+- Protobuf decoding.
+- Snapshot measurement validation.
+- Collection timestamp consistency.
+- Receipt timestamp validity.
+
+Corrupt or unsupported records cause retrieval
+to fail.
+
+The repository does not silently skip invalid
+records or return partially populated pages.
+
+A corrupt latest sample does not cause fallback
+to an older sample.
+
+## Management API
+
+The appliance exposes stored performance records
+through two read-only HTTP endpoints:
+
+    GET /api/v1/devices/{id}/performance/latest
+
+    GET /api/v1/devices/{id}/performance/history
+
+The HTTP layer verifies device registration before
+requesting historical measurements.
+
+Historical responses support time-range filtering,
+bounded page sizes, and opaque continuation cursors.
+
+HTTP continuation cursors are bound to the device
+identity and normalized time range.
+
+Historical snapshots are serialized using protobuf
+JSON mapping to preserve 64-bit integer precision
+and optional measurement availability.
+
+Management access remains restricted to loopback
+interfaces.
+
+The Management API does not currently implement
+administrator authentication or HTTPS.
+
+See [management-api.md](management-api.md) for the
+complete HTTP contract.
 
 ## Transactional Persistence
 
@@ -362,8 +488,12 @@ access even for inspection after appliance shutdown.
 If read-only access fails, verify the database exists
 before opening it normally for SELECT queries.
 
-Direct database inspection is a development tool,
-not a replacement for the future management API.
+Direct database inspection remains available for
+local development and troubleshooting.
+
+Applications should retrieve historical measurements
+through the documented Management API rather than
+accessing the appliance database directly.
 
 ## Testing
 
@@ -389,6 +519,19 @@ Performance reporting and storage are covered by:
 - Lost acknowledgement recovery tests.
 - Database restart persistence tests.
 - Credential revocation and cascading deletion tests.
+- Latest performance retrieval tests.
+- Historical time-range filtering tests.
+- Millisecond timestamp boundary tests.
+- Deterministic historical ordering tests.
+- Keyset pagination tests.
+- Live pagination consistency tests.
+- Deleted continuation record tests.
+- Historical retrieval transaction tests.
+- Historical query index verification.
+- Historical cursor restart persistence tests.
+- Performance HTTP query validation tests.
+- Performance JSON serialization tests.
+- Database-backed HTTP integration tests.
 
 Run the complete repository validation suite:
 
@@ -415,7 +558,6 @@ go test -race -count=1 -v \
 - No persistent offline report queue.
 - No historical performance retention policy.
 - No automatic historical cleanup or downsampling.
-- No performance time-range management API.
 - No management console visualization.
 - No performance alerting or threshold evaluation.
 - No Windows native performance collection.

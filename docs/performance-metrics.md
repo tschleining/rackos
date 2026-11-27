@@ -1422,7 +1422,6 @@ runtime dependencies.
 - No discard or flush statistics.
 - No permanent disk hardware identifiers.
 - No configurable CPU sampling interval.
-- No performance management REST API.
 - No management console visualization.
 - No configurable performance reporting interval.
 - No persistent offline report queue.
@@ -1447,6 +1446,24 @@ use different operating system accounting methods.
 Individual native CPU counter rollovers are
 not independently tracked.
 
-Future milestones will introduce performance
-management APIs, historical time-range retrieval,
-retention policies, visualization, and alerting.
+Stored performance measurements are available
+through the read-only RackOS Management API.
+
+The API supports latest snapshot retrieval,
+historical time-range filtering, and cursor-based
+pagination.
+
+The Management API uses protobuf JSON mapping
+for historical snapshots.
+
+Its representation differs from the standalone
+agent metrics JSON format, particularly for
+64-bit integer values and unavailable optional
+measurements.
+
+See [management-api.md](management-api.md) for
+the HTTP response contract.
+
+Future milestones will introduce retention
+policies, historical downsampling, management
+console visualization, and alerting.

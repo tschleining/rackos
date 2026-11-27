@@ -19,6 +19,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/grpcserver"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 	"github.com/tschleining/rackos/internal/appliance/identity"
+	"github.com/tschleining/rackos/internal/appliance/performance"
 	"github.com/tschleining/rackos/internal/appliance/pki"
 	"google.golang.org/grpc"
 )
@@ -151,14 +152,19 @@ func run(
 
 	deviceRepository := devices.NewRepository(db)
 
-	httpServer := httpserver.NewWithDevices(
+	performanceRepository := performance.NewRepository(db)
+
+	httpServer := httpserver.NewWithManagement(
 		cfg.HTTPAddr,
 		version,
 		db.PingContext,
 		deviceRepository,
+		performanceRepository,
 	)
 
 	logger.Info("Device management API initialized")
+
+	logger.Info("Performance management API initialized")
 
 	agentService := agentservice.New(
 		db,

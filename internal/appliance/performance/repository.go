@@ -27,6 +27,12 @@ type executor interface {
 		query string,
 		args ...any,
 	) *sql.Row
+
+	QueryContext(
+		ctx context.Context,
+		query string,
+		args ...any,
+	) (*sql.Rows, error)
 }
 
 // Repository manages historical performance snapshots.
