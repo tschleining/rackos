@@ -9,7 +9,7 @@ import type {
   PerformanceRecord,
 } from "@rackos/api-client";
 
-import { devices } from "../test/fixtures";
+import { devices } from "../test/fixtures.ts";
 
 function createSample(
   deviceID: string,
