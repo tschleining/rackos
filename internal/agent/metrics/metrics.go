@@ -24,11 +24,11 @@ const DefaultCPUSampleInterval = time.Second
 // Snapshot represents a complete system
 // performance measurement.
 type Snapshot struct {
-	CPU     CPUUsage      `json:"cpu"`
-	Memory  MemoryUsage   `json:"memory"`
-	Storage *StorageUsage `json:"storage,omitempty"`
-
-	CollectedAt time.Time `json:"collected_at"`
+	CPU         CPUUsage      `json:"cpu"`
+	Memory      MemoryUsage   `json:"memory"`
+	Storage     *StorageUsage `json:"storage,omitempty"`
+	Network     *NetworkUsage `json:"network,omitempty"`
+	CollectedAt time.Time     `json:"collected_at"`
 }
 
 // CPUUsage represents aggregate processor utilization

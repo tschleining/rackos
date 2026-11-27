@@ -8,6 +8,15 @@ on macOS and Linux.
 Performance metrics are collected independently of
 hardware inventory and agent heartbeat operations.
 
+| Platform | Architecture | CPU | Memory | Filesystems | Disk I/O | Network |
+| --- | --- | --- | --- | --- | --- | --- |
+| macOS | ARM64 | Yes | Yes | Yes | Yes | Yes |
+| macOS | AMD64 | Yes | Yes | Yes | Yes | Yes |
+| Linux | ARM64 | Yes | Yes | Yes | Yes | Yes |
+| Linux | AMD64 | Yes | Yes | Yes | Yes | Yes |
+
+Other platforms return an explicit unsupported platform error.
+
 ## Supported Platforms
 
 | Platform | Architecture | CPU | Memory | Filesystems | Disk I/O |
@@ -46,6 +55,11 @@ The package provides:
 - Context-aware collection orchestration.
 - Unsupported platform handling.
 - Unit tests and native integration tests.
+- Native network interface discovery.
+- Cumulative network activity collection.
+- Optional interface link speed collection.
+- Network throughput and packet rate calculations.
+- Network interface identity and counter reset handling.
 
 The public collection entry point is:
 
@@ -58,30 +72,37 @@ Partial snapshots are not returned.
 
 ## Collection Lifecycle
 
-A performance snapshot is collected in the
-following order:
+A performance snapshot is collected in the following order:
 
-1. Read initial disk activity counters.
-2. Record the disk sampling start time.
-3. Read initial CPU counters.
-4. Wait for the default CPU sampling interval.
-5. Read final CPU counters.
-6. Calculate CPU utilization.
-7. Collect memory statistics.
-8. Read final disk activity counters.
-9. Calculate disk throughput and operation rates.
-10. Collect mounted filesystem capacity.
-11. Record the UTC collection completion timestamp.
+1. Read initial network interface counters.
+2. Record the network sampling start time.
+3. Read initial disk activity counters.
+4. Record the disk sampling start time.
+5. Read initial CPU counters.
+6. Wait for the default CPU sampling interval.
+7. Read final CPU counters.
+8. Calculate CPU utilization.
+9. Collect memory statistics.
+10. Read final disk activity counters.
+11. Calculate disk throughput and operation rates.
+12. Collect mounted filesystem capacity.
+13. Read final network interface counters.
+14. Calculate network throughput and packet rates.
+15. Record the UTC collection completion timestamp.
 
-CPU and disk collection share a single sampling wait.
+CPU, disk, and network collection share a single sampling
+wait.
 
-CPU and disk sampling durations are measured
-independently and may differ.
-
-Filesystem capacity is collected after disk sampling
-and is not included in the disk rate interval.
+Each subsystem measures its sampling duration independently.
 
 The default CPU sampling interval is one second.
+
+Network sampling includes the time spent collecting
+filesystem capacity and may have a longer sampling
+interval than CPU or disk measurements.
+
+Native interface measurements are not necessarily collected
+at exactly the same instant.
 
 ## CPU Utilization
 
@@ -561,6 +582,429 @@ A replacement device reusing the same name may
 produce an incorrect rate if its counters do not
 decrease.
 
+
+## Network Interface Monitoring
+
+RackOS collects network interface metadata, cumulative
+activity counters, and calculated activity rates.
+
+Network monitoring supports physical and virtual interfaces,
+including:
+
+- Ethernet interfaces.
+- Wireless interfaces.
+- Loopback interfaces.
+- VPN tunnels.
+- Network bridges.
+- VLAN interfaces.
+- Virtual Ethernet interfaces.
+- Administratively disabled interfaces.
+
+Interfaces are not excluded based on their names or
+whether they represent physical hardware.
+
+## Network Interface Metadata
+
+Each interface record contains the following metadata:
+
+| Field | Description |
+| --- | --- |
+| name | Operating system interface name |
+| index | Operating system interface index |
+| up | Administrative enabled status |
+| loopback | Whether the interface is a loopback interface |
+| mtu | Maximum transmission unit in bytes |
+| link_speed_bits_per_second | Optional driver-reported link speed |
+
+Administrative status does not necessarily indicate
+physical connectivity, carrier status, or internet
+availability.
+
+A zero MTU is accepted when usable MTU information is
+unavailable.
+
+Interface names and indexes are not permanent hardware
+identifiers.
+
+Both values must match when calculating rates between
+consecutive samples.
+
+## Cumulative Network Activity
+
+Each interface includes native cumulative activity counters.
+
+| Field | Description |
+| --- | --- |
+| received_bytes | Cumulative received bytes |
+| transmitted_bytes | Cumulative transmitted bytes |
+| received_packets | Cumulative received packets |
+| transmitted_packets | Cumulative transmitted packets |
+| receive_errors | Cumulative receive errors |
+| transmit_errors | Cumulative transmit errors |
+| receive_dropped | Optional cumulative receive drops |
+| transmit_dropped | Optional cumulative transmit drops |
+
+Required counters are represented as unsigned 64-bit
+integers.
+
+Optional counters are represented as nullable unsigned
+64-bit integers.
+
+A null value indicates an unavailable measurement.
+
+A zero value indicates a supported measurement reporting
+zero activity.
+
+Counters may reset following:
+
+- Operating system reboot.
+- Interface removal and recreation.
+- Driver reinitialization.
+- Native counter rollover.
+- Other operating system or driver events.
+
+These measurements are not persistent lifetime hardware
+counters.
+
+## Linux Network Collection
+
+Linux interface statistics are collected through native
+Netlink routing interfaces.
+
+The collector requests an RTM_GETLINK dump and retrieves
+interface metadata together with IFLA_STATS64 statistics.
+
+The native rtnl_link_stats64 structure provides 64-bit
+network activity counters.
+
+The collector decodes native byte ordering and validates:
+
+- Netlink message boundaries.
+- Attribute lengths and alignment.
+- Interface names and indexes.
+- Required statistics availability.
+- Duplicate interface identities.
+- Dump completion status.
+- Interrupted dumps.
+
+Unknown attributes and additional trailing statistics
+fields are ignored.
+
+Older 32-bit statistics are not used as a fallback.
+
+Interface discovery also supports the standard Go net
+package through shared interface normalization logic.
+
+The production counter collector retrieves metadata and
+statistics from the same Netlink response.
+
+Linux network measurements reflect the current network
+namespace.
+
+A containerized agent may therefore report container
+interfaces rather than the host's physical interfaces.
+
+### Linux Link Speed Collection
+
+Optional interface link speeds are retrieved from:
+
+    /sys/class/net/<interface>/speed
+
+The native value is expressed in megabits per second.
+
+RackOS converts it into bits per second using:
+
+    speed_mbps * 1000000
+
+The interface index is checked before and after the
+speed attribute is read.
+
+This reduces the possibility of associating a speed
+measurement with a renamed or replaced interface.
+
+Unknown, unsupported, malformed, inaccessible, and zero
+speed values are treated as unavailable measurements.
+
+Loopback and administratively disabled interfaces do
+not report link speeds.
+
+An unavailable speed does not invalidate otherwise valid
+network statistics.
+
+## macOS Network Collection
+
+macOS interface discovery uses the standard Go net package.
+
+Cumulative statistics are collected through the native
+Interface Management Information Base (IFMIB) sysctl
+interface.
+
+The collector requests an ifmibdata record for each
+discovered interface index.
+
+The embedded if_data64 structure provides native 64-bit
+network activity counters.
+
+The IFMIB interface is used instead of NET_RT_IFLIST2
+to avoid known accuracy concerns associated with the
+routing statistics path.
+
+Native fields are decoded explicitly using their ABI
+offsets and native byte ordering.
+
+The collector does not cast native byte buffers into
+Go structures.
+
+Unexpected native record sizes invalidate collection
+rather than allowing potentially incorrect decoding.
+
+The returned interface name is verified against the
+original discovery metadata.
+
+Fresh administrative flags and MTU are retrieved from
+the same record as the cumulative counters.
+
+Disappeared or renamed interfaces are skipped.
+
+Unexpected native collection errors invalidate the
+complete snapshot.
+
+### macOS Link Speed Collection
+
+The native ifi_baudrate field provides an optional
+64-bit link speed expressed in bits per second.
+
+No unit conversion or additional native system call
+is required.
+
+Zero values and the maximum unsigned 64-bit value are
+treated as unavailable by RackOS.
+
+Loopback and administratively disabled interfaces do
+not report link speeds.
+
+Driver-reported speeds may represent nominal capacity
+rather than the current negotiated transmission rate.
+
+### macOS Dropped-Packet Counters
+
+Receive drops are collected from the native ifi_iqdrops
+field.
+
+The general 64-bit transmit drop counter is unavailable
+through the current IFMIB collection path.
+
+The native send-queue drop counter is not substituted
+because its semantics and integer width differ.
+
+Consequently, transmit_dropped is serialized as null
+on macOS.
+
+## Network Throughput and Packet Rates
+
+Network activity rates are calculated using two
+consecutive cumulative counter readings.
+
+Each rate record contains:
+
+| Field | Unit |
+| --- | --- |
+| name | Interface name |
+| index | Interface index |
+| receive_bytes_per_second | Bytes per second |
+| transmit_bytes_per_second | Bytes per second |
+| receive_packets_per_second | Packets per second |
+| transmit_packets_per_second | Packets per second |
+| sample_interval_millis | Milliseconds |
+
+Rates are calculated as:
+
+    counter_delta / elapsed_seconds
+
+Counter subtraction is performed before converting
+the result into a floating-point value.
+
+This preserves small counter changes even when
+cumulative measurements are very large.
+
+The full measured elapsed duration is used in rate
+calculations.
+
+The reported millisecond sampling interval is
+informational.
+
+Intervals shorter than one millisecond are rejected.
+
+Fractional byte and packet rates are supported.
+
+### Interface Identity and Counter Reset Handling
+
+Consecutive readings must have matching interface
+names and indexes.
+
+- Unchanged counters produce zero rates.
+- Increased counters produce calculated rates.
+- Decreased counters invalidate the affected rate.
+- Newly discovered interfaces require a baseline.
+- Removed interfaces do not produce rates.
+- Renamed interfaces require a new baseline.
+- Interfaces with changed indexes require a new baseline.
+- Duplicate names or indexes invalidate the sample.
+
+Error counters are included in counter regression checks.
+
+Optional dropped-packet counters are compared only when
+both readings are available.
+
+A counter regression on one interface does not invalidate
+valid rates from other interfaces.
+
+Current cumulative measurements remain available even
+when a rate cannot be calculated.
+
+Missing rates are omitted rather than represented as
+zero activity.
+
+A subsequent valid pair of readings can establish a
+new rate following a counter reset.
+
+Interface name and index reuse cannot be detected
+in every situation.
+
+### Network Sampling
+
+Network monitoring shares the existing CPU sampling wait.
+
+Initial network counters are collected before CPU and
+storage collection begins.
+
+Final network counters are collected after filesystem
+capacity collection completes.
+
+Network sampling therefore includes the CPU sampling
+interval and additional collection overhead.
+
+A single approximate sampling interval is used for
+all interfaces within the snapshot.
+
+No additional sampling delay or background collection
+goroutine is introduced.
+
+### Network Aggregation
+
+RackOS preserves individual network interface records.
+
+Interface counters must not be summed indiscriminately
+to calculate total host network traffic.
+
+The same traffic may traverse multiple interfaces,
+including physical interfaces, bridges, VPN tunnels,
+and virtual Ethernet devices.
+
+Loopback traffic contributes to both received and
+transmitted counters.
+
+Link speed does not represent measured throughput
+or internet connection speed.
+
+Bandwidth utilization percentages are not currently
+calculated.
+
+## Network Platform Support
+
+| Measurement | Linux | macOS |
+| --- | --- | --- |
+| Interface name and index | Yes | Yes |
+| Administrative status | Yes | Yes |
+| Loopback identification | Yes | Yes |
+| MTU | Yes | Yes |
+| Link speed | Optional | Optional |
+| Received bytes | Yes | Yes |
+| Transmitted bytes | Yes | Yes |
+| Received packets | Yes | Yes |
+| Transmitted packets | Yes | Yes |
+| Receive errors | Yes | Yes |
+| Transmit errors | Yes | Yes |
+| Receive drops | Yes | Yes |
+| Transmit drops | Yes | Unavailable |
+| Receive throughput | Yes | Yes |
+| Transmit throughput | Yes | Yes |
+| Receive packet rate | Yes | Yes |
+| Transmit packet rate | Yes | Yes |
+
+## Network JSON Contract
+
+Network measurements are included in the network object
+of a unified performance snapshot.
+
+Cumulative measurements and calculated rates are
+maintained as separate arrays.
+
+Example:
+
+```json
+{
+  "network": {
+    "interfaces": [
+      {
+        "name": "eth0",
+        "index": 2,
+        "up": true,
+        "loopback": false,
+        "mtu": 1500,
+        "link_speed_bits_per_second": 1000000000,
+        "received_bytes": 524288000,
+        "received_packets": 420000,
+        "receive_errors": 0,
+        "transmitted_bytes": 262144000,
+        "transmitted_packets": 210000,
+        "transmit_errors": 0,
+        "receive_dropped": 0,
+        "transmit_dropped": 0
+      }
+    ],
+    "interface_rates": [
+      {
+        "name": "eth0",
+        "index": 2,
+        "receive_bytes_per_second": 6000,
+        "transmit_bytes_per_second": 3000,
+        "receive_packets_per_second": 60,
+        "transmit_packets_per_second": 30,
+        "sample_interval_millis": 1250
+      }
+    ]
+  }
+}
+```
+
+The values above are illustrative.
+
+Every rate must correspond to a current interface
+with the same name and index.
+
+An interface may be present without a corresponding
+rate record.
+
+Unavailable optional measurements are explicitly
+serialized as null.
+
+Successful collection with no eligible interfaces
+produces empty arrays rather than null arrays:
+
+```json
+{
+  "network": {
+    "interfaces": [],
+    "interface_rates": []
+  }
+}
+```
+
+Consumers must preserve integer precision when
+processing large unsigned cumulative counters.
+
+
 ## Snapshot Format
 
 A complete performance snapshot contains:
@@ -724,6 +1168,13 @@ Foundation function access without requiring CGO.
 Dependencies are versioned through go.mod
 and go.sum.
 
+Network interface collection uses the Go standard
+library and the existing golang.org/x/sys/unix
+dependency.
+
+No additional dependencies are required for network
+monitoring.
+
 ## Security and Privacy
 
 Performance collection:
@@ -736,6 +1187,25 @@ Performance collection:
 - Does not collect process-level utilization.
 - Does not access agent credentials.
 - Does not modify appliance or agent databases.
+
+Network monitoring does not:
+
+- Collect IP addresses.
+- Retain MAC addresses.
+- Capture network packets.
+- Inspect packet contents.
+- Collect wireless network names.
+- Discover remote network devices.
+- Modify network configuration.
+- Require external network connectivity.
+
+Interface names, indexes, administrative status,
+MTUs, link speeds, and cumulative activity counters
+are retained as performance metadata.
+
+Network measurements are collected locally and are
+not transmitted to the appliance in the current
+implementation.
 
 Filesystem sources and mount paths are included
 in the collected metadata.
@@ -770,6 +1240,21 @@ Performance monitoring is covered by:
 - Unsupported platform tests.
 - CLI dispatch and JSON contract tests.
 - Native hardware smoke tests.
+- Network interface model and validation tests.
+- Network JSON contract and integer precision tests.
+- Linux interface discovery and normalization tests.
+- Linux Netlink message and attribute parser tests.
+- Linux 64-bit network counter tests.
+- Linux link speed and interface identity tests.
+- macOS interface discovery tests.
+- macOS IFMIB native record decoding tests.
+- macOS link speed normalization tests.
+- Network throughput and packet rate tests.
+- Network counter regression and recovery tests.
+- Network interface arrival and removal tests.
+- Unified network collection orchestration tests.
+- Network CLI serialization and failure tests.
+- Native network collection tests.
 
 Run the metrics tests:
 
@@ -818,6 +1303,34 @@ These external utilities are used only for
 manual verification. They are not required by
 the RackOS agent.
 
+### Network Verification
+
+Linux interface statistics can be compared against
+individual native sysfs counters under:
+
+    /sys/class/net/<interface>/statistics/
+
+Linux link speeds can be compared against:
+
+    /sys/class/net/<interface>/speed
+
+macOS interface metadata and activity counters can
+be compared using ifconfig and netstat.
+
+Controlled local TCP workloads can verify that
+network counters and activity rates respond to
+real traffic.
+
+Loopback workloads do not require an external
+network connection.
+
+Linux collection can also be verified inside an
+isolated Docker network namespace.
+
+External utilities and Python verification scripts
+are development tools only and are not RackOS
+runtime dependencies.
+
 ## Current Limitations
 
 - No per-core CPU utilization.
@@ -825,7 +1338,17 @@ the RackOS agent.
 - No CPU temperature or frequency monitoring.
 - No separate swap or memory pressure measurements.
 - No Windows performance collectors.
-- No network interface performance measurements.
+- No network carrier or operational state measurements.
+- No network duplex mode measurements.
+- No bandwidth utilization percentages.
+- No network error or dropped-packet rate calculations.
+- No general macOS transmit drop counter.
+- No permanent network interface hardware identities.
+- No physical-to-virtual network topology.
+- No per-process network utilization.
+- No packet capture or traffic classification.
+- No network latency or packet loss probing.
+- No network device discovery.
 - No remote filesystem capacity monitoring.
 - No physical-to-logical storage topology.
 - No APFS container aggregation.

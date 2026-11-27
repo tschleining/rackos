@@ -607,3 +607,316 @@ func TestRunMetricsStorageFailure(t *testing.T) {
 		t.Fatal("failed collection produced JSON output")
 	}
 }
+
+func TestRunMetricsNetworkJSON(t *testing.T) {
+	linkSpeed := uint64(1000000000)
+	receiveDropped := uint64(3)
+
+	expected := metrics.Snapshot{
+		CPU: metrics.CPUUsage{
+			UsagePercent:         25,
+			SampleIntervalMillis: 1000,
+		},
+
+		Memory: metrics.MemoryUsage{
+			TotalBytes:     10000,
+			AvailableBytes: 4000,
+			UsedBytes:      6000,
+			UsagePercent:   60,
+		},
+
+		Storage: &metrics.StorageUsage{
+			Filesystems: []metrics.FilesystemUsage{
+				{
+					Source:         "/dev/sda1",
+					MountPoint:     "/",
+					FilesystemType: "ext4",
+					Capacity: metrics.FilesystemCapacity{
+						TotalBytes:     1000,
+						FreeBytes:      350,
+						AvailableBytes: 300,
+						UsedBytes:      650,
+						ReservedBytes:  50,
+						UsagePercent:   65,
+					},
+				},
+			},
+
+			Disks:     []metrics.DiskUsage{},
+			DiskRates: []metrics.DiskRate{},
+		},
+
+		Network: &metrics.NetworkUsage{
+			Interfaces: []metrics.NetworkInterfaceUsage{
+				{
+					Name:  "eth0",
+					Index: 2,
+					Up:    true,
+					MTU:   1500,
+
+					LinkSpeedBitsPerSecond: &linkSpeed,
+
+					ReceivedBytes:      524288000,
+					ReceivedPackets:    420000,
+					ReceiveErrors:      2,
+					TransmittedBytes:   262144000,
+					TransmittedPackets: 210000,
+					TransmitErrors:     1,
+
+					ReceiveDropped:  &receiveDropped,
+					TransmitDropped: nil,
+				},
+				{
+					Name:     "lo",
+					Index:    1,
+					Up:       true,
+					Loopback: true,
+					MTU:      65536,
+				},
+			},
+
+			InterfaceRates: []metrics.NetworkInterfaceRate{
+				{
+					Name:                     "eth0",
+					Index:                    2,
+					ReceiveBytesPerSecond:    6000,
+					TransmitBytesPerSecond:   3000,
+					ReceivePacketsPerSecond:  60,
+					TransmitPacketsPerSecond: 30,
+					SampleIntervalMillis:     1250,
+				},
+				{
+					Name:                 "lo",
+					Index:                1,
+					SampleIntervalMillis: 1250,
+				},
+			},
+		},
+
+		CollectedAt: time.Date(
+			2026, 1, 1,
+			12, 0, 0, 0,
+			time.UTC,
+		),
+	}
+
+	var stdout bytes.Buffer
+	calls := 0
+
+	err := runMetricsWithCollector(
+		context.Background(),
+		nil,
+		&stdout,
+		func(context.Context) (metrics.Snapshot, error) {
+			calls++
+			return expected, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if calls != 1 {
+		t.Fatal("expected exactly one collection")
+	}
+
+	var actual metrics.Snapshot
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&actual,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf(
+			"unexpected snapshot: %s",
+			stdout.String(),
+		)
+	}
+
+	// Verify the complete top-level JSON contract.
+	var fields map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&fields,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedFields := []string{
+		"cpu",
+		"memory",
+		"storage",
+		"network",
+		"collected_at",
+	}
+
+	if len(fields) != len(expectedFields) {
+		t.Fatalf(
+			"unexpected top-level fields: %s",
+			stdout.String(),
+		)
+	}
+
+	for _, key := range expectedFields {
+		if _, exists := fields[key]; !exists {
+			t.Fatalf("missing JSON field %q", key)
+		}
+	}
+
+	var networkFields map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		fields["network"],
+		&networkFields,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(networkFields) != 2 {
+		t.Fatal("unexpected network JSON fields")
+	}
+
+	for _, key := range []string{
+		"interfaces",
+		"interface_rates",
+	} {
+		if _, exists := networkFields[key]; !exists {
+			t.Fatalf("missing network field %q", key)
+		}
+	}
+
+	// Verify unavailable measurements are explicitly
+	// serialized as null rather than omitted.
+	var interfaces []map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		networkFields["interfaces"],
+		&interfaces,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(interfaces) != 2 {
+		t.Fatal("incorrect interface count")
+	}
+
+	if string(interfaces[0]["transmit_dropped"]) != "null" {
+		t.Fatal("unavailable transmit drops must be null")
+	}
+
+	if string(interfaces[1]["link_speed_bits_per_second"]) != "null" {
+		t.Fatal("unavailable link speed must be null")
+	}
+}
+
+func TestRunMetricsEmptyNetworkJSON(t *testing.T) {
+	snapshot := metrics.Snapshot{
+		CPU: metrics.CPUUsage{
+			UsagePercent:         25,
+			SampleIntervalMillis: 1000,
+		},
+
+		Memory: metrics.MemoryUsage{
+			TotalBytes:     10000,
+			AvailableBytes: 4000,
+			UsedBytes:      6000,
+			UsagePercent:   60,
+		},
+
+		Storage: &metrics.StorageUsage{
+			Filesystems: []metrics.FilesystemUsage{},
+			Disks:       []metrics.DiskUsage{},
+			DiskRates:   []metrics.DiskRate{},
+		},
+
+		Network: &metrics.NetworkUsage{
+			Interfaces:     []metrics.NetworkInterfaceUsage{},
+			InterfaceRates: []metrics.NetworkInterfaceRate{},
+		},
+
+		CollectedAt: time.Now().UTC(),
+	}
+
+	var stdout bytes.Buffer
+
+	err := runMetricsWithCollector(
+		context.Background(),
+		nil,
+		&stdout,
+		func(context.Context) (metrics.Snapshot, error) {
+			return snapshot, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var fields map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&fields,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var network map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		fields["network"],
+		&network,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, key := range []string{
+		"interfaces",
+		"interface_rates",
+	} {
+		if string(network[key]) != "[]" {
+			t.Fatalf(
+				"expected empty array for %q, got %s",
+				key,
+				network[key],
+			)
+		}
+	}
+}
+
+func TestRunMetricsNetworkFailure(t *testing.T) {
+	tests := []error{
+		metrics.ErrInvalidNetworkStatistics,
+		metrics.ErrInvalidNetworkSample,
+	}
+
+	for _, expectedError := range tests {
+		t.Run(expectedError.Error(), func(t *testing.T) {
+			var stdout bytes.Buffer
+
+			err := runMetricsWithCollector(
+				context.Background(),
+				nil,
+				&stdout,
+				func(context.Context) (metrics.Snapshot, error) {
+					return metrics.Snapshot{}, expectedError
+				},
+			)
+
+			if !errors.Is(err, expectedError) {
+				t.Fatalf(
+					"expected %v, got %v",
+					expectedError,
+					err,
+				)
+			}
+
+			if stdout.Len() != 0 {
+				t.Fatal("failed collection produced JSON output")
+			}
+		})
+	}
+}

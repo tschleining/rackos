@@ -190,3 +190,122 @@ func TestCollectNativeStorage(t *testing.T) {
 		len(storage.DiskRates),
 	)
 }
+
+func TestCollectNativeNetwork(t *testing.T) {
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	defer cancel()
+
+	snapshot, err := Collect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if snapshot.Storage == nil {
+		t.Fatal("missing storage measurements")
+	}
+
+	if snapshot.Network == nil {
+		t.Fatal("missing network measurements")
+	}
+
+	network := snapshot.Network
+
+	if network.Interfaces == nil {
+		t.Fatal("network interfaces slice is nil")
+	}
+
+	if network.InterfaceRates == nil {
+		t.Fatal("network rates slice is nil")
+	}
+
+	if err := validateNetworkInterfaces(
+		network.Interfaces,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	interfaces := make(
+		map[string]NetworkInterfaceUsage,
+		len(network.Interfaces),
+	)
+
+	for i, iface := range network.Interfaces {
+		if i > 0 &&
+			network.Interfaces[i-1].Name >= iface.Name {
+			t.Fatal("invalid interface ordering")
+		}
+
+		interfaces[iface.Name] = iface
+
+		if iface.LinkSpeedBitsPerSecond != nil &&
+			*iface.LinkSpeedBitsPerSecond == 0 {
+			t.Fatal("invalid zero link speed")
+		}
+
+		if (iface.Loopback || !iface.Up) &&
+			iface.LinkSpeedBitsPerSecond != nil {
+			t.Fatal("unexpected interface link speed")
+		}
+	}
+
+	seenRates := make(map[string]struct{})
+
+	for i, rate := range network.InterfaceRates {
+		if i > 0 &&
+			network.InterfaceRates[i-1].Name >= rate.Name {
+			t.Fatal("invalid network rate ordering")
+		}
+
+		iface, exists := interfaces[rate.Name]
+
+		if !exists || iface.Index != rate.Index {
+			t.Fatal("rate does not match a current interface")
+		}
+
+		if _, exists := seenRates[rate.Name]; exists {
+			t.Fatal("duplicate network rate")
+		}
+
+		seenRates[rate.Name] = struct{}{}
+
+		if rate.SampleIntervalMillis < 1000 {
+			t.Fatal("network sampling interval is too short")
+		}
+
+		values := []float64{
+			rate.ReceiveBytesPerSecond,
+			rate.TransmitBytesPerSecond,
+			rate.ReceivePacketsPerSecond,
+			rate.TransmitPacketsPerSecond,
+		}
+
+		for _, value := range values {
+			// Validate finite, nonnegative measurements.
+			requireNetworkRateValue(t, value, value)
+		}
+
+		t.Logf(
+			"interface=%q index=%d rx=%.2f B/s tx=%.2f B/s rx_packets=%.2f/s tx_packets=%.2f/s interval=%dms",
+			rate.Name,
+			rate.Index,
+			rate.ReceiveBytesPerSecond,
+			rate.TransmitBytesPerSecond,
+			rate.ReceivePacketsPerSecond,
+			rate.TransmitPacketsPerSecond,
+			rate.SampleIntervalMillis,
+		)
+	}
+
+	if snapshot.CollectedAt.Location() != time.UTC {
+		t.Fatal("collection timestamp is not UTC")
+	}
+
+	t.Logf(
+		"Collected %d network interfaces and %d network rates",
+		len(network.Interfaces),
+		len(network.InterfaceRates),
+	)
+}
