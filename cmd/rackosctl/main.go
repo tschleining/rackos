@@ -42,6 +42,15 @@ func run(args []string, stdout, stderr io.Writer) error {
 		)
 	}
 
+	if args[0] == "storage" {
+		return runStorage(
+			context.Background(),
+			args[1:],
+			stdout,
+			stderr,
+		)
+	}
+
 	if len(args) < 2 || args[0] != "enrollment" {
 		return errors.New(
 			"unknown command; run rackosctl help",
@@ -197,6 +206,8 @@ Usage:
   rackosctl devices revoke --id ID [--data-dir DIR]
   rackosctl devices remove --id ID --confirm [--data-dir DIR]
   rackosctl devices help
+  rackosctl storage stats [--data-dir DIR]
+  rackosctl storage help
 
 Enrollment tokens are single-use and expire automatically.
 `)

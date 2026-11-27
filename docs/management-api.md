@@ -379,6 +379,55 @@ exist when the next request is processed.
 Clients should deduplicate samples by device ID
 and sample ID when combining independent queries.
 
+
+## Historical Retention
+
+The appliance supports configurable automatic expiration
+of historical performance records.
+
+Retention is disabled by default.
+
+Expiration is based on appliance receipt timestamps,
+while historical retrieval and time-range filtering
+continue to use collection timestamps.
+
+Automatic cleanup does not modify registered device
+identities or agent credentials.
+
+The latest performance endpoint returns the latest
+remaining collected sample.
+
+If all historical samples for a registered device have
+expired, latest retrieval returns HTTP 404 with:
+
+```json
+{
+  "error": "no performance samples found"
+}
+```
+
+Historical retrieval returns HTTP 200 with an empty
+samples array when no matching measurements remain.
+
+Existing continuation cursors remain valid after
+retention removes their corresponding records.
+
+Clients must continue to satisfy the original cursor
+device identity and time-range requirements.
+
+Retention may remove records between successive
+historical page requests.
+
+A previous response containing has_more=true does not
+guarantee that additional records will still exist.
+
+Retention configuration and storage administration
+are not exposed through the Management API.
+
+See [Historical Performance Retention](performance-retention.md)
+for configuration and expiration semantics.
+
+
 ## Performance JSON Representation
 
 Performance snapshots use the Protocol Buffers JSON
@@ -664,7 +713,9 @@ go test -race -count=1 -v \
 - No device modification or deletion endpoints.
 - No cross-device performance aggregation.
 - No historical downsampling.
-- No historical retention policy.
+- No retention configuration API.
+- No storage statistics API.
+- No per-device historical retention policy.
 - No real-time event subscriptions.
 - No management console visualization.
 - No performance alerting or threshold evaluation.

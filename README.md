@@ -7,8 +7,10 @@ A local-first infrastructure monitoring platform for home labs.
 RackOS currently provides a working Go-based appliance,
 authenticated agent enrollment, heartbeat monitoring,
 hardware inventory persistence, historical performance
-reporting, and a read-only local management API for
-device status and performance measurements.
+reporting, configurable automatic historical retention,
+read-only storage administration, and a local read-only
+management API for device status and performance
+measurements.
 
 The project remains under active development and is
 not yet a supported production release. Planned
@@ -45,6 +47,7 @@ Additional agentless checks and native integrations from RackOS
 Agents are intended to send telemetry, not accept unsolicited inbound connections. Remote command execution is out of scope for the initial agent.
 
 
+
 ### Repository Layout
 
 ```text
@@ -58,16 +61,16 @@ internal/
     agentservice/       # Authenticated agent RPC services
     config/             # Appliance configuration
     credentials/        # Credential management
-    database/           # SQLite persistence and migrations
+    database/           # SQLite persistence, migrations and storage inspection
     devices/            # Device management and repositories
     enrollment/         # Enrollment token management
     grpcserver/         # gRPC agent server
     httpserver/         # Device and performance management API
-    performance/        # Historical performance validation, persistence and queries
     identity/           # Appliance identity
     inventory/          # Hardware inventory validation and persistence
-    performance/        # Historical performance validation, persistence and queries
+    performance/        # Historical performance storage, queries and statistics
     pki/                # PKI and certificate rotation
+    retention/          # Retention policy and background cleanup worker
 
   agent/
     client/             # Appliance communication and monitoring lifecycle
@@ -87,6 +90,7 @@ docs/
   inventory-storage.md
   management-api.md
   performance-metrics.md
+  performance-retention.md
   performance-storage.md
 
 .github/
@@ -217,6 +221,69 @@ forwarding, or other remote access mechanism.
 See [Management API](docs/management-api.md) for
 the complete endpoint and response contract.
 
+
+#### Historical Performance Retention
+
+Automatic historical performance retention is available
+but disabled by default.
+
+Enable a 30-day retention policy:
+
+```bash
+RACKOS_PERFORMANCE_RETENTION=720h \
+RACKOS_PERFORMANCE_CLEANUP_INTERVAL=15m \
+RACKOS_PERFORMANCE_CLEANUP_BATCH_SIZE=500 \
+./bin/rackosd
+```
+
+Configuration:
+
+| Environment Variable | Default |
+| --- | --- |
+| RACKOS_PERFORMANCE_RETENTION | 0s (disabled) |
+| RACKOS_PERFORMANCE_CLEANUP_INTERVAL | 15m |
+| RACKOS_PERFORMANCE_CLEANUP_BATCH_SIZE | 500 |
+
+Retention durations support 24 hours through 365 days.
+
+Expiration is based on appliance receipt timestamps.
+
+Enabling retention may immediately remove existing
+historical measurements that exceed the configured
+retention duration.
+
+Back up important historical data before enabling or
+reducing retention.
+
+Automatic cleanup does not remove device registrations,
+agent credentials, or hardware inventory.
+
+See [Historical Performance Retention](docs/performance-retention.md)
+for the complete configuration and expiration contract.
+
+#### Storage Administration
+
+Inspect historical performance storage and SQLite
+database utilization:
+
+```bash
+./bin/rackosctl storage stats --data-dir ./data
+```
+
+The storage report includes historical sample counts,
+payload sizes, timestamp ranges, SQLite file sizes,
+and reusable page capacity.
+
+The command opens an existing appliance database
+in read-only mode without applying migrations.
+
+Automatic retention reduces logical historical storage
+but does not necessarily shrink SQLite database files.
+
+See [Historical Performance Retention](docs/performance-retention.md)
+for storage report interpretation.
+
+
 #### Validation
 
 ```bash
@@ -334,3 +401,23 @@ The RackOS name is a working name and requires a trademark/name clearance review
 - Read-only performance management HTTP endpoints.
 - Sanitized management API error responses.
 - SQLite-backed performance API integration tests.
+- Configurable receipt-based historical performance retention.
+- Opt-in retention with non-destructive upgrade defaults.
+- Strict retention policy and configuration validation.
+- Indexed and bounded historical sample deletion.
+- Independent transactional cleanup batches.
+- Background retention scheduling and startup cleanup.
+- Context-aware cleanup cancellation and batch deadlines.
+- Automatic recovery from temporary cleanup failures.
+- Structured retention execution logging.
+- Coordinated retention worker and appliance shutdown.
+- Historical cursor compatibility after sample expiration.
+- Preservation of unrelated appliance database records.
+- Logical historical performance storage statistics.
+- SQLite database, WAL, and SHM file inspection.
+- SQLite reusable page capacity reporting.
+- Read-only database access without automatic migrations.
+- Administrative storage statistics CLI.
+- Retention repository and worker regression tests.
+- SQLite-backed retention integration tests.
+- Appliance retention lifecycle integration tests.

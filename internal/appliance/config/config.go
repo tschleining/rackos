@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/tschleining/rackos/internal/appliance/retention"
 )
 
 type Config struct {
@@ -12,6 +16,8 @@ type Config struct {
 	GRPCAddr string
 	DataDir  string
 	LogLevel slog.Level
+
+	PerformanceRetention retention.Policy
 }
 
 func Default() Config {
@@ -20,6 +26,8 @@ func Default() Config {
 		GRPCAddr: "127.0.0.1:50051",
 		DataDir:  "./data",
 		LogLevel: slog.LevelInfo,
+
+		PerformanceRetention: retention.DefaultPolicy(),
 	}
 }
 
@@ -68,5 +76,114 @@ func load(lookup func(string) (string, bool)) (Config, error) {
 		}
 	}
 
+	policy, err := loadRetentionPolicy(lookup)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg.PerformanceRetention = policy
+
 	return cfg, nil
+}
+
+// loadRetentionPolicy applies environment overrides
+// to the default performance retention policy.
+//
+// Invalid settings prevent appliance startup.
+// Automatic deletion remains disabled unless an
+// explicit nonzero retention duration is configured.
+func loadRetentionPolicy(
+	lookup func(string) (string, bool),
+) (retention.Policy, error) {
+	policy := retention.DefaultPolicy()
+
+	durationOverrides := []struct {
+		key    string
+		target *time.Duration
+	}{
+		{
+			"RACKOS_PERFORMANCE_RETENTION",
+			&policy.RetentionDuration,
+		},
+		{
+			"RACKOS_PERFORMANCE_CLEANUP_INTERVAL",
+			&policy.CleanupInterval,
+		},
+	}
+
+	for _, override := range durationOverrides {
+		value, exists := lookup(override.key)
+		if !exists {
+			continue
+		}
+
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return retention.Policy{}, fmt.Errorf(
+				"invalid %s: %w",
+				override.key,
+				err,
+			)
+		}
+
+		*override.target = duration
+
+		if err := policy.Validate(); err != nil {
+			return retention.Policy{}, fmt.Errorf(
+				"invalid %s: %w",
+				override.key,
+				err,
+			)
+		}
+	}
+
+	const batchSizeKey = "RACKOS_PERFORMANCE_CLEANUP_BATCH_SIZE"
+
+	if value, exists := lookup(batchSizeKey); exists {
+		batchSize, err := parseRetentionBatchSize(value)
+		if err != nil {
+			return retention.Policy{}, fmt.Errorf(
+				"invalid %s: %w",
+				batchSizeKey,
+				err,
+			)
+		}
+
+		policy.BatchSize = batchSize
+
+		if err := policy.Validate(); err != nil {
+			return retention.Policy{}, fmt.Errorf(
+				"invalid %s: %w",
+				batchSizeKey,
+				err,
+			)
+		}
+	}
+
+	if err := policy.Validate(); err != nil {
+		return retention.Policy{}, err
+	}
+
+	return policy, nil
+}
+
+// parseRetentionBatchSize accepts only decimal
+// integer values without signs or whitespace.
+//
+// Range validation is performed by the retention
+// policy rather than duplicated in configuration.
+func parseRetentionBatchSize(value string) (int, error) {
+	if value == "" {
+		return 0, fmt.Errorf("batch size cannot be empty")
+	}
+
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			return 0, fmt.Errorf(
+				"batch size must be a decimal integer",
+			)
+		}
+	}
+
+	return strconv.Atoi(value)
 }
