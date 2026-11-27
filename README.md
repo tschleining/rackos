@@ -128,3 +128,12 @@ License
 RackOS-authored software in this repository is intended to be licensed under the Apache License, Version 2.0, unless a component explicitly indicates otherwise. Third-party dependencies and embedded firmware components retain their own licenses and attribution obligations.
 
 The RackOS name is a working name and requires a trademark/name clearance review before commercialization.
+
+### Implemented Features
+- Native mounted filesystem discovery on Linux and macOS.
+- Filesystem capacity, utilization, and reserved space monitoring.
+- Cumulative disk read and write activity monitoring.
+- Disk throughput and operations-per-second measurements.
+- Unified CPU, memory, and storage performance snapshots.
+- CGO-free native macOS storage collection through IOKit.
+- Disk counter regression and device change handling.

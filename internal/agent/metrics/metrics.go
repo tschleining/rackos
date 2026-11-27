@@ -21,11 +21,12 @@ var (
 
 const DefaultCPUSampleInterval = time.Second
 
-// Snapshot represents a system-wide performance
-// measurement collected by the agent.
+// Snapshot represents a complete system
+// performance measurement.
 type Snapshot struct {
-	CPU    CPUUsage    `json:"cpu"`
-	Memory MemoryUsage `json:"memory"`
+	CPU     CPUUsage      `json:"cpu"`
+	Memory  MemoryUsage   `json:"memory"`
+	Storage *StorageUsage `json:"storage,omitempty"`
 
 	CollectedAt time.Time `json:"collected_at"`
 }

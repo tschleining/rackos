@@ -39,3 +39,29 @@ func readMemoryUsage(
 		runtime.GOOS,
 	)
 }
+
+func readFilesystemUsage(
+	ctx context.Context,
+) ([]FilesystemUsage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf(
+		"%w: filesystem capacity collection",
+		ErrUnsupportedPlatform,
+	)
+}
+
+func readDiskUsage(
+	ctx context.Context,
+) ([]DiskUsage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf(
+		"%w: disk activity collection",
+		ErrUnsupportedPlatform,
+	)
+}

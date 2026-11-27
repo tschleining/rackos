@@ -366,3 +366,244 @@ func TestRunMetricsDispatch(t *testing.T) {
 		t.Fatal("canceled metrics command produced output")
 	}
 }
+
+func TestRunMetricsStorageJSON(t *testing.T) {
+	expected := metrics.Snapshot{
+		CPU: metrics.CPUUsage{
+			UsagePercent:         25,
+			SampleIntervalMillis: 1000,
+		},
+		Memory: metrics.MemoryUsage{
+			TotalBytes:     1000,
+			AvailableBytes: 400,
+			UsedBytes:      600,
+			UsagePercent:   60,
+		},
+		Storage: &metrics.StorageUsage{
+			Filesystems: []metrics.FilesystemUsage{
+				{
+					Source:         "/dev/sda1",
+					MountPoint:     "/",
+					FilesystemType: "ext4",
+					ReadOnly:       false,
+					Capacity: metrics.FilesystemCapacity{
+						TotalBytes:     1000,
+						FreeBytes:      350,
+						AvailableBytes: 300,
+						UsedBytes:      650,
+						ReservedBytes:  50,
+						UsagePercent:   65,
+					},
+				},
+			},
+			Disks: []metrics.DiskUsage{
+				{
+					Device:          "sda",
+					ReadBytes:       4096000,
+					WriteBytes:      2048000,
+					ReadOperations:  1000,
+					WriteOperations: 500,
+				},
+			},
+			DiskRates: []metrics.DiskRate{
+				{
+					Device:                   "sda",
+					ReadBytesPerSecond:       1024000,
+					WriteBytesPerSecond:      512000,
+					ReadOperationsPerSecond:  250,
+					WriteOperationsPerSecond: 125,
+					SampleIntervalMillis:     1000,
+				},
+			},
+		},
+		CollectedAt: time.Date(
+			2026, 11, 26, 23, 0, 0, 0,
+			time.UTC,
+		),
+	}
+
+	var stdout bytes.Buffer
+
+	err := runMetricsWithCollector(
+		context.Background(),
+		nil,
+		&stdout,
+		func(context.Context) (metrics.Snapshot, error) {
+			return expected, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !json.Valid(stdout.Bytes()) {
+		t.Fatal("metrics output is not valid JSON")
+	}
+
+	var actual metrics.Snapshot
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&actual,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf(
+			"unexpected metrics snapshot: %s",
+			stdout.String(),
+		)
+	}
+
+	// Verify the public JSON field names independently
+	// of the Go structure definitions.
+	var document map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&document,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, field := range []string{
+		"cpu",
+		"memory",
+		"storage",
+		"collected_at",
+	} {
+		if _, exists := document[field]; !exists {
+			t.Fatalf("missing JSON field %q", field)
+		}
+	}
+
+	var storage map[string]json.RawMessage
+
+	if err := json.Unmarshal(
+		document["storage"],
+		&storage,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, field := range []string{
+		"filesystems",
+		"disks",
+		"disk_rates",
+	} {
+		raw, exists := storage[field]
+		if !exists {
+			t.Fatalf("missing storage field %q", field)
+		}
+
+		var entries []json.RawMessage
+
+		if err := json.Unmarshal(raw, &entries); err != nil {
+			t.Fatal(err)
+		}
+
+		if len(entries) != 1 {
+			t.Fatalf(
+				"expected one entry in %q, got %d",
+				field,
+				len(entries),
+			)
+		}
+	}
+}
+
+func TestRunMetricsEmptyStorageJSON(t *testing.T) {
+	snapshot := metrics.Snapshot{
+		CPU: metrics.CPUUsage{
+			UsagePercent:         10,
+			SampleIntervalMillis: 1000,
+		},
+		Memory: metrics.MemoryUsage{
+			TotalBytes:     1000,
+			AvailableBytes: 500,
+			UsedBytes:      500,
+			UsagePercent:   50,
+		},
+		Storage: &metrics.StorageUsage{
+			Filesystems: []metrics.FilesystemUsage{},
+			Disks:       []metrics.DiskUsage{},
+			DiskRates:   []metrics.DiskRate{},
+		},
+		CollectedAt: time.Now().UTC(),
+	}
+
+	var stdout bytes.Buffer
+
+	err := runMetricsWithCollector(
+		context.Background(),
+		nil,
+		&stdout,
+		func(context.Context) (metrics.Snapshot, error) {
+			return snapshot, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var document struct {
+		Storage map[string]json.RawMessage `json:"storage"`
+	}
+
+	if err := json.Unmarshal(
+		stdout.Bytes(),
+		&document,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if document.Storage == nil {
+		t.Fatal("storage object is missing")
+	}
+
+	for _, field := range []string{
+		"filesystems",
+		"disks",
+		"disk_rates",
+	} {
+		value, exists := document.Storage[field]
+		if !exists {
+			t.Fatalf("missing storage field %q", field)
+		}
+
+		if string(value) != "[]" {
+			t.Fatalf(
+				"expected empty array for %q, got %s",
+				field,
+				value,
+			)
+		}
+	}
+}
+
+func TestRunMetricsStorageFailure(t *testing.T) {
+	expectedError := metrics.ErrInvalidFilesystem
+
+	var stdout bytes.Buffer
+
+	err := runMetricsWithCollector(
+		context.Background(),
+		nil,
+		&stdout,
+		func(context.Context) (metrics.Snapshot, error) {
+			return metrics.Snapshot{}, expectedError
+		},
+	)
+
+	if !errors.Is(err, expectedError) {
+		t.Fatalf(
+			"expected storage collection error, got %v",
+			err,
+		)
+	}
+
+	if stdout.Len() != 0 {
+		t.Fatal("failed collection produced JSON output")
+	}
+}
