@@ -103,6 +103,7 @@ func TestManagementServerAllEndpoints(
 				nil,
 			)
 
+			request.Host = "127.0.0.1:8080"
 			recorder := httptest.NewRecorder()
 
 			server.Handler.ServeHTTP(
@@ -144,6 +145,7 @@ func TestManagementServerPerformanceResponses(
 		nil,
 	)
 
+	request.Host = "127.0.0.1:8080"
 	recorder := httptest.NewRecorder()
 
 	server.Handler.ServeHTTP(
@@ -297,6 +299,7 @@ func TestManagementServerConstructorCompatibility(
 					nil,
 				)
 
+				request.Host = "127.0.0.1:8080"
 				recorder := httptest.NewRecorder()
 
 				tt.handler.ServeHTTP(
@@ -407,6 +410,7 @@ func TestManagementServerRepositoryRequirements(
 					nil,
 				)
 
+				request.Host = "127.0.0.1:8080"
 				recorder := httptest.NewRecorder()
 
 				handler.ServeHTTP(
@@ -490,6 +494,7 @@ func TestManagementServerReadinessFailure(
 		nil,
 	)
 
+	request.Host = "127.0.0.1:8080"
 	recorder := httptest.NewRecorder()
 
 	server.Handler.ServeHTTP(
@@ -552,6 +557,7 @@ func TestManagementServerUnsupportedMethods(
 				nil,
 			)
 
+			request.Host = "127.0.0.1:8080"
 			recorder := httptest.NewRecorder()
 
 			handler.ServeHTTP(

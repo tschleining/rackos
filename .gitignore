@@ -25,3 +25,18 @@ coverage.*
 # IDE settings
 .idea/
 .vscode/
+
+# Frontend dependencies
+web/**/node_modules/
+
+# Frontend build output
+web/**/dist/
+web/**/.vite/
+web/**/*.tsbuildinfo
+
+# Local frontend environment files
+web/**/.env.local
+web/**/.env.*.local
+
+# Generated embedded web console assets
+/internal/appliance/webconsole/dist/

@@ -6,11 +6,16 @@ A local-first infrastructure monitoring platform for home labs.
 
 RackOS currently provides a working Go-based appliance,
 authenticated agent enrollment, heartbeat monitoring,
-hardware inventory persistence, historical performance
-reporting, configurable automatic historical retention,
-read-only storage administration, and a local read-only
-management API for device status and performance
-measurements.
+hardware inventory persistence, native performance
+collection, historical performance reporting, configurable
+automatic retention, read-only storage administration,
+and an embedded browser-based management console.
+
+The management console supports registered device
+monitoring, hardware inventory visualization, latest
+performance measurements, and historical performance
+charts without requiring a separate frontend server
+at runtime.
 
 The project remains under active development and is
 not yet a supported production release. Planned
@@ -47,7 +52,6 @@ Additional agentless checks and native integrations from RackOS
 Agents are intended to send telemetry, not accept unsolicited inbound connections. Remote command execution is out of scope for the initial agent.
 
 
-
 ### Repository Layout
 
 ```text
@@ -65,12 +69,13 @@ internal/
     devices/            # Device management and repositories
     enrollment/         # Enrollment token management
     grpcserver/         # gRPC agent server
-    httpserver/         # Device and performance management API
+    httpserver/         # Management API and frontend HTTP integration
     identity/           # Appliance identity
     inventory/          # Hardware inventory validation and persistence
-    performance/        # Historical performance storage, queries and statistics
+    performance/        # Historical performance storage and queries
     pki/                # PKI and certificate rotation
-    retention/          # Retention policy and background cleanup worker
+    retention/          # Retention policy and background cleanup
+    webconsole/         # Embedded frontend assets and HTTP serving
 
   agent/
     client/             # Appliance communication and monitoring lifecycle
@@ -83,6 +88,37 @@ api/
     rackos/
       v1/               # Versioned protobuf definitions and gRPC bindings
 
+web/
+  apps/
+    console/
+      src/
+        app/            # Application services and query configuration
+        components/     # Shared React components
+        features/       # Dashboard, devices, inventory and performance
+        hooks/          # Management API query hooks
+        layouts/        # Application and device layouts
+        lib/            # Formatting and API error utilities
+        pages/          # Application routes and page components
+        styles/         # Application styling
+      test/             # Frontend unit and component tests
+      e2e/              # Playwright browser tests
+      index.html
+      package.json
+      playwright.config.ts
+      tsconfig.json
+      vite.config.ts
+      vitest.config.ts
+
+  packages/
+    api-client/         # Shared TypeScript management API client
+
+  package.json          # Frontend workspace configuration
+  package-lock.json     # Locked frontend dependencies
+
+scripts/
+  build-appliance.sh    # Integrated appliance build
+  test-console-server.sh # Isolated browser-test appliance
+
 docs/
   agent-protocol.md
   device-administration.md
@@ -92,10 +128,11 @@ docs/
   performance-metrics.md
   performance-retention.md
   performance-storage.md
+  web-console.md
 
 .github/
   workflows/
-    ci.yml              # Continuous integration
+    ci.yml              # Backend and frontend continuous integration
 
 .gitignore
 go.mod                  # Go module definition
@@ -104,8 +141,14 @@ LICENSE
 README.md
 ```
 
-Tests are maintained alongside their respective
-implementation files.
+Go tests are maintained alongside their respective
+implementation files. Frontend unit, component, and
+browser integration tests are maintained within the
+frontend workspaces.
+
+Generated assets, compiled executables, runtime
+databases, and test reports are excluded from
+version control.
 
 Additional directories will be introduced incrementally
 as their corresponding components are developed.
@@ -124,7 +167,7 @@ Development roadmap
 - [ ] Bootstrap Go appliance daemon and SQLite persistence
 - [ ] Implement the versioned agent protocol and local agent collectors
 - [ ] Build secure enrollment, approval, renewal and revocation
-- [ ] Display connected agents and basic host metrics in the web console
+- [x] Display connected agents and basic host metrics in the web console
 - [ ] Create the touch-optimized 1U panel interface
 - [ ] Add agentless health checks and the first Proxmox connector
 - [ ] Package Linux and Windows agents
@@ -141,8 +184,16 @@ code rather than a supported installation package.
 - Go version specified in go.mod.
 - Git.
 - macOS or Linux for native agent development.
+- Node.js 22.12 or later, compatible with locked
+  frontend dependencies, for web console development.
+- npm for frontend dependency management.
 - Protocol Buffers compiler and Go generators when
   modifying protocol definitions.
+
+Continuous integration uses Node.js 24.
+
+Node.js is not required for backend-only builds or
+for running an integrated appliance executable.
 
 #### Build
 
@@ -165,6 +216,60 @@ addresses.
 
 The development management API should not be exposed
 to untrusted networks.
+
+
+#### Build and Run the Integrated Web Console
+
+From the repository root:
+
+```bash
+./scripts/build-appliance.sh
+./bin/rackosd-web
+```
+
+Open the management console in a browser:
+
+    http://127.0.0.1:8080
+
+The integrated executable serves both the React
+management console and the read-only management API.
+
+No separate frontend server or Node.js runtime is
+required when running the integrated executable.
+
+The management console provides:
+
+- Appliance health and readiness information.
+- Registered device monitoring.
+- Device search, filtering, and sorting.
+- Hardware inventory visualization.
+- Latest CPU, memory, storage, and network measurements.
+- Historical performance charts.
+- Automatic refresh and cached data warnings.
+
+The management interface remains local-only
+and read-only.
+
+#### Frontend Development
+
+With the backend appliance running:
+
+```bash
+npm --prefix web ci
+npm --prefix web run dev
+```
+
+Open:
+
+    http://127.0.0.1:5173
+
+Vite proxies management API requests to the
+local appliance.
+
+See [Web Management Console](docs/web-console.md)
+for architecture, build instructions, security
+requirements, and testing documentation.
+
 
 #### Collect Local Performance Metrics
 
@@ -316,8 +421,14 @@ The currently implemented security controls include:
 - Authenticated and validated telemetry ingestion.
 - Transactional performance persistence.
 - Loopback-only read-only HTTP management access.
-- No trust based solely on IP addresses, hostnames,
-  or discovery announcements.
+- No trust based solely on IP addresses, hostnames, or discovery announcements.
+- Browser Host and Origin validation.
+- Fetch Metadata request validation.
+- Same-origin management API communication.
+- Restricted production Content Security Policy.
+- Browser frame embedding restrictions.
+- Restricted static asset serving.
+- Sanitized frontend request error presentation.
 
 The Management API currently operates without
 administrator authentication or HTTPS.
@@ -328,7 +439,6 @@ Planned security capabilities include:
 
 - Administrator authentication.
 - Management HTTPS.
-- Browser-origin protections.
 - Explicit interactive agent approval.
 - Mutually authenticated agent TLS.
 - Automatic agent credential renewal.
@@ -421,3 +531,39 @@ The RackOS name is a working name and requires a trademark/name clearance review
 - Retention repository and worker regression tests.
 - SQLite-backed retention integration tests.
 - Appliance retention lifecycle integration tests.
+- Read-only hardware inventory management HTTP endpoint.
+- Shared TypeScript management API models.
+- Validated TypeScript management API client.
+- Request cancellation and timeout handling.
+- React browser-based management console.
+- Responsive application navigation and layouts.
+- Appliance health and readiness visualization.
+- Registered device dashboard and connectivity counts.
+- Device search, filtering, and sorting.
+- Individual device detail views.
+- Hardware inventory visualization.
+- Latest CPU and memory utilization visualization.
+- Filesystem capacity and utilization visualization.
+- Disk and network counter and throughput visualization.
+- Historical CPU and memory performance charts.
+- Resource-specific historical performance charts.
+- Historical time-range selection.
+- Bounded historical sample retrieval.
+- Missing measurement and historical gap preservation.
+- Precision-preserving BigInt measurement formatting.
+- Automatic management data refresh.
+- Loading, empty, error, and offline interface states.
+- Cached data warning presentation.
+- Recoverable React error boundaries.
+- Embedded production frontend assets.
+- Single-executable appliance and management console.
+- Backend-only build compatibility.
+- Browser application deep-link support.
+- Production security headers.
+- Content-hashed static asset caching.
+- Lazy-loaded performance visualization components.
+- Reproducible integrated appliance build script.
+- Frontend unit and component tests.
+- Isolated appliance browser integration tests.
+- Production historical chart rendering tests.
+- Backend-only and integrated appliance CI configuration.

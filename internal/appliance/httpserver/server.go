@@ -39,8 +39,6 @@ func NewWithDevices(
 	)
 }
 
-// NewWithManagement creates an HTTP server with
-// optional device and performance management APIs.
 func NewWithManagement(
 	addr string,
 	version string,
@@ -48,15 +46,39 @@ func NewWithManagement(
 	deviceRepository DeviceReader,
 	performanceRepository PerformanceReader,
 ) *http.Server {
+	return NewWithManagementInventory(
+		addr,
+		version,
+		check,
+		deviceRepository,
+		performanceRepository,
+		nil,
+	)
+}
+
+// NewWithManagementInventory creates the appliance
+// management HTTP server with optional inventory
+// and performance APIs.
+func NewWithManagementInventory(
+	addr string,
+	version string,
+	check ReadinessCheck,
+	deviceRepository DeviceReader,
+	performanceRepository PerformanceReader,
+	inventoryRepository InventoryReader,
+) *http.Server {
+	handler := NewHandlerWithManagementInventory(
+		version,
+		check,
+		deviceRepository,
+		performanceRepository,
+		inventoryRepository,
+	)
+
 	return &http.Server{
 		Addr: addr,
 
-		Handler: NewHandlerWithManagement(
-			version,
-			check,
-			deviceRepository,
-			performanceRepository,
-		),
+		Handler: protectLocalManagement(handler),
 
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
@@ -90,17 +112,35 @@ func NewHandlerWithDevices(
 	)
 }
 
-// NewHandlerWithManagement creates the management
-// API router.
-//
-// Performance routes require both a device reader
-// and a performance reader because device
-// registration must be verified before retrieval.
 func NewHandlerWithManagement(
 	version string,
 	check ReadinessCheck,
 	deviceRepository DeviceReader,
 	performanceRepository PerformanceReader,
+) http.Handler {
+	return NewHandlerWithManagementInventory(
+		version,
+		check,
+		deviceRepository,
+		performanceRepository,
+		nil,
+	)
+}
+
+// NewHandlerWithManagementInventory creates the
+// management API router.
+//
+// Inventory and performance endpoints require
+// a device reader to verify registration.
+//
+// Network-facing servers must apply the local
+// management security middleware.
+func NewHandlerWithManagementInventory(
+	version string,
+	check ReadinessCheck,
+	deviceRepository DeviceReader,
+	performanceRepository PerformanceReader,
+	inventoryRepository InventoryReader,
 ) http.Handler {
 	mux := http.NewServeMux()
 
@@ -139,6 +179,14 @@ func NewHandlerWithManagement(
 				mux,
 				deviceRepository,
 				performanceRepository,
+			)
+		}
+
+		if inventoryRepository != nil {
+			registerInventoryRoutes(
+				mux,
+				deviceRepository,
+				inventoryRepository,
 			)
 		}
 	}

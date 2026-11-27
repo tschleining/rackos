@@ -49,6 +49,8 @@ func performHistoryRequest(
 		nil,
 	)
 
+	request.Host = "127.0.0.1:8080"
+
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, request)

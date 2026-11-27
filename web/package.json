@@ -1,0 +1,19 @@
+{
+  "name": "rackos-web",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@rackos/console",
+    "build": "npm run build --workspace=@rackos/console",
+    "typecheck": "npm run typecheck --workspace=@rackos/api-client && npm run typecheck --workspace=@rackos/console",
+    "test": "npm run test --workspace=@rackos/api-client",
+    "test:e2e": "npm run test:e2e --workspace=@rackos/console"
+  }
+}

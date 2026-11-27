@@ -256,6 +256,7 @@ func TestServerWithDevices(t *testing.T) {
 				nil,
 			)
 
+			request.Host = "127.0.0.1:8080"
 			recorder := httptest.NewRecorder()
 
 			server.Handler.ServeHTTP(
@@ -297,6 +298,7 @@ func TestServerWithoutDevices(t *testing.T) {
 				nil,
 			)
 
+			request.Host = "127.0.0.1:8080"
 			recorder := httptest.NewRecorder()
 
 			server.Handler.ServeHTTP(
@@ -332,6 +334,7 @@ func TestIntegratedDeviceSummary(t *testing.T) {
 		nil,
 	)
 
+	request.Host = "127.0.0.1:8080"
 	recorder := httptest.NewRecorder()
 
 	server.Handler.ServeHTTP(recorder, request)
