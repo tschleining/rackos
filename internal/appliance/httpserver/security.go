@@ -1,0 +1,201 @@
+package httpserver
+
+import (
+	"net"
+	"net/http"
+	"net/netip"
+	"strconv"
+	"strings"
+)
+
+// protectLocalManagement restricts management requests
+// to explicit loopback authorities and rejects browser
+// requests originating from other websites.
+//
+// This is not administrator authentication.
+func protectLocalManagement(
+	next http.Handler,
+) http.Handler {
+	return http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		w.Header().Set(
+			"Cache-Control",
+			"no-store",
+		)
+
+		w.Header().Set(
+			"X-Content-Type-Options",
+			"nosniff",
+		)
+
+		w.Header().Set(
+			"X-Frame-Options",
+			"DENY",
+		)
+
+		w.Header().Set(
+			"Referrer-Policy",
+			"no-referrer",
+		)
+
+		w.Header().Set(
+			"Cross-Origin-Resource-Policy",
+			"same-origin",
+		)
+
+		w.Header().Add("Vary", "Origin")
+		w.Header().Add("Vary", "Sec-Fetch-Site")
+
+		if !isLocalManagementRequest(r) {
+			writeDeviceError(
+				w,
+				http.StatusForbidden,
+				"management request forbidden",
+			)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isLocalManagementRequest(
+	r *http.Request,
+) bool {
+	ip, port, ok := parseLocalManagementHost(
+		r.Host,
+	)
+	if !ok {
+		return false
+	}
+
+	// When running inside an actual HTTP server,
+	// require the requested authority to match
+	// the local connection address.
+	if local, ok := r.Context().Value(
+		http.LocalAddrContextKey,
+	).(*net.TCPAddr); ok {
+		localIP, valid := netip.AddrFromSlice(
+			local.IP,
+		)
+
+		if !valid ||
+			localIP.Unmap() != ip ||
+			local.Port != port {
+			return false
+		}
+	}
+
+	expectedOrigin := "http://" +
+		net.JoinHostPort(
+			ip.String(),
+			strconv.Itoa(port),
+		)
+
+	// Browsers omit the default HTTP port
+	// when serializing an origin.
+	if port == 80 {
+		if ip.Is6() {
+			expectedOrigin =
+				"http://[" + ip.String() + "]"
+		} else {
+			expectedOrigin =
+				"http://" + ip.String()
+		}
+	}
+
+	origins := r.Header.Values("Origin")
+
+	if len(origins) > 1 {
+		return false
+	}
+
+	if len(origins) == 1 &&
+		origins[0] != expectedOrigin {
+		return false
+	}
+
+	sites := r.Header.Values("Sec-Fetch-Site")
+
+	if len(sites) > 1 {
+		return false
+	}
+
+	if len(sites) == 1 {
+		switch sites[0] {
+		case "same-origin", "none":
+			// Same-origin requests and direct
+			// user-initiated navigation.
+
+		default:
+			// Reject cross-site, same-site,
+			// malformed and unknown values.
+			return false
+		}
+	}
+
+	// Non-browser clients such as curl may
+	// legitimately omit browser metadata.
+	return true
+}
+
+func parseLocalManagementHost(
+	authority string,
+) (netip.Addr, int, bool) {
+	host, portText, err :=
+		net.SplitHostPort(authority)
+
+	if err != nil {
+		// An authority without a port uses
+		// the default HTTP port.
+		portText = "80"
+
+		switch {
+		case strings.HasPrefix(authority, "[") &&
+			strings.HasSuffix(authority, "]"):
+			host = authority[1 : len(authority)-1]
+
+			if !strings.Contains(host, ":") {
+				return netip.Addr{}, 0, false
+			}
+
+		case !strings.Contains(authority, ":"):
+			host = authority
+
+		default:
+			return netip.Addr{}, 0, false
+		}
+	}
+
+	ip, err := netip.ParseAddr(host)
+
+	if err != nil ||
+		!ip.IsLoopback() ||
+		ip.Is4In6() ||
+		ip.Zone() != "" {
+		return netip.Addr{}, 0, false
+	}
+
+	// Reject alternate, non-canonical address
+	// representations to keep origin matching
+	// unambiguous.
+	if ip.String() != host {
+		return netip.Addr{}, 0, false
+	}
+
+	port, err := strconv.ParseUint(
+		portText,
+		10,
+		16,
+	)
+
+	if err != nil ||
+		port == 0 ||
+		strconv.FormatUint(port, 10) != portText {
+		return netip.Addr{}, 0, false
+	}
+
+	return ip, int(port), true
+}

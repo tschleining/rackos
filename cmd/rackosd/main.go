@@ -19,6 +19,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/grpcserver"
 	"github.com/tschleining/rackos/internal/appliance/httpserver"
 	"github.com/tschleining/rackos/internal/appliance/identity"
+	"github.com/tschleining/rackos/internal/appliance/inventory"
 	"github.com/tschleining/rackos/internal/appliance/performance"
 	"github.com/tschleining/rackos/internal/appliance/pki"
 	"github.com/tschleining/rackos/internal/appliance/retention"
@@ -171,6 +172,8 @@ func run(
 
 	performanceRepository := performance.NewRepository(db)
 
+	inventoryRepository := inventory.NewRepository(db)
+
 	retentionWorker, err := retention.NewWorker(
 		cfg.PerformanceRetention,
 		performanceRepository,
@@ -183,17 +186,34 @@ func run(
 		)
 	}
 
-	httpServer := httpserver.NewWithManagement(
+	httpServer := httpserver.NewWithManagementInventory(
 		cfg.HTTPAddr,
 		version,
 		db.PingContext,
 		deviceRepository,
 		performanceRepository,
+		inventoryRepository,
+	)
+
+	consoleEnabled, err :=
+		httpserver.EnableWebConsole(httpServer)
+	if err != nil {
+		return fmt.Errorf(
+			"initialize web console: %w",
+			err,
+		)
+	}
+
+	logger.Info(
+		"Web console configuration",
+		"embedded", consoleEnabled,
 	)
 
 	logger.Info("Device management API initialized")
 
 	logger.Info("Performance management API initialized")
+
+	logger.Info("Inventory management API initialized")
 
 	agentService := agentservice.New(
 		db,
