@@ -15,11 +15,19 @@ import (
 //
 // Collect returns an empty snapshot if any stage fails.
 func Collect(ctx context.Context) (Snapshot, error) {
-	return collectWithReaders(
+	return collectWithStorageReaders(
 		ctx,
-		readCPUCounters,
-		readMemoryUsage,
-		waitForCPUSample,
+		func(ctx context.Context) (Snapshot, error) {
+			return collectWithReaders(
+				ctx,
+				readCPUCounters,
+				readMemoryUsage,
+				waitForCPUSample,
+				time.Now,
+			)
+		},
+		readDiskUsage,
+		readFilesystemUsage,
 		time.Now,
 	)
 }
