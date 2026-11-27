@@ -35,7 +35,25 @@ func LoadOrCreate(
 		return nil, err
 	}
 
-	dir := filepath.Join(dataDir, "pki")
+	return loadOrCreate(
+		dataDir,
+		"pki",
+		"RackOS CA "+installationID,
+		"RackOS gRPC",
+		names,
+	)
+}
+
+// loadOrCreate implements the shared certificate
+// authority lifecycle for independent TLS services.
+func loadOrCreate(
+	dataDir string,
+	directory string,
+	commonName string,
+	serverCommonName string,
+	names serverNames,
+) (*tls.Config, error) {
+	dir := filepath.Join(dataDir, directory)
 
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf(
@@ -57,7 +75,6 @@ func LoadOrCreate(
 	privatePath := filepath.Join(dir, privateFilename)
 	publicPath := filepath.Join(dir, CAFilename)
 
-	commonName := "RackOS CA " + installationID
 	now := time.Now().UTC()
 
 	authority, err := loadAuthority(privatePath)
@@ -140,10 +157,11 @@ func LoadOrCreate(
 		return nil, err
 	}
 
-	return newRotatingTLSConfig(
+	return newRotatingTLSConfigForService(
 		ca,
 		authority,
 		names,
+		serverCommonName,
 		time.Now,
 	)
 }
@@ -252,10 +270,12 @@ func createAuthority(
 
 // issueServerCertificate creates a TLS server certificate
 // signed by the persistent appliance CA.
+
 func issueServerCertificate(
 	ca *x509.Certificate,
 	authority tls.Certificate,
 	names serverNames,
+	commonName string,
 	now time.Time,
 ) (tls.Certificate, error) {
 	key, err := ecdsa.GenerateKey(
@@ -286,7 +306,7 @@ func issueServerCertificate(
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName: "RackOS gRPC",
+			CommonName: commonName,
 		},
 		NotBefore: now.Add(-5 * time.Minute),
 		NotAfter:  expires,

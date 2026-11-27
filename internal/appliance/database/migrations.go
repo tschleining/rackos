@@ -186,6 +186,93 @@ var migrations = []string{
 	CREATE INDEX idx_device_performance_received_at
 		ON device_performance(received_at);
 	`,
+
+	// Migration 007: Administrator accounts.
+	`
+	CREATE TABLE administrators (
+		id TEXT PRIMARY KEY NOT NULL
+			CHECK(
+				length(id) = 36
+				AND length(CAST(id AS BLOB)) = 36
+				AND substr(id, 9, 1) = '-'
+				AND substr(id, 14, 1) = '-'
+				AND substr(id, 19, 1) = '-'
+				AND substr(id, 24, 1) = '-'
+				AND substr(id, 15, 1) = '4'
+				AND substr(id, 20, 1) IN ('8', '9', 'a', 'b')
+				AND length(replace(id, '-', '')) = 32
+				AND replace(id, '-', '') NOT GLOB '*[^0-9a-f]*'
+			),
+
+		username TEXT UNIQUE NOT NULL
+			CHECK(
+				length(username) BETWEEN 3 AND 64
+				AND length(CAST(username AS BLOB)) = length(username)
+				AND username NOT GLOB '*[^a-z0-9_.-]*'
+				AND substr(username, 1, 1) GLOB '[a-z0-9]'
+			),
+
+		password_scheme TEXT NOT NULL
+			CHECK(password_scheme = 'argon2id-v1'),
+
+		password_salt BLOB NOT NULL
+			CHECK(
+				typeof(password_salt) = 'blob'
+				AND length(password_salt) = 16
+			),
+
+		password_hash BLOB NOT NULL
+			CHECK(
+				typeof(password_hash) = 'blob'
+				AND length(password_hash) = 32
+			),
+
+		role TEXT NOT NULL
+			CHECK(role = 'administrator'),
+
+		created_at INTEGER NOT NULL
+			CHECK(
+				typeof(created_at) = 'integer'
+				AND created_at > 0
+			),
+
+		updated_at INTEGER NOT NULL
+			CHECK(
+				typeof(updated_at) = 'integer'
+				AND updated_at >= created_at
+			),
+
+		password_changed_at INTEGER NOT NULL
+			CHECK(
+				typeof(password_changed_at) = 'integer'
+				AND password_changed_at >= created_at
+				AND password_changed_at <= updated_at
+			),
+
+		disabled_at INTEGER
+			CHECK(
+				disabled_at IS NULL
+				OR (
+					typeof(disabled_at) = 'integer'
+					AND disabled_at >= created_at
+					AND disabled_at <= updated_at
+				)
+			),
+
+		last_login_at INTEGER
+			CHECK(
+				last_login_at IS NULL
+				OR (
+					typeof(last_login_at) = 'integer'
+					AND last_login_at >= created_at
+					AND last_login_at <= updated_at
+				)
+			)
+	);
+
+	CREATE UNIQUE INDEX idx_administrators_singleton
+		ON administrators((1));
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
