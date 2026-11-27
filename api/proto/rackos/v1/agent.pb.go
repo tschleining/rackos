@@ -9,6 +9,7 @@ package rackosv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -533,11 +534,1039 @@ func (x *ReportInventoryResponse) GetAccepted() bool {
 	return false
 }
 
+// PerformanceSnapshot contains a complete system-wide
+// performance measurement collected by an agent.
+type PerformanceSnapshot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CollectedAt   *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=collected_at,json=collectedAt,proto3" json:"collected_at,omitempty"`
+	Cpu           *CPUPerformance        `protobuf:"bytes,2,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	Memory        *MemoryPerformance     `protobuf:"bytes,3,opt,name=memory,proto3" json:"memory,omitempty"`
+	Storage       *StoragePerformance    `protobuf:"bytes,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	Network       *NetworkPerformance    `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PerformanceSnapshot) Reset() {
+	*x = PerformanceSnapshot{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PerformanceSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PerformanceSnapshot) ProtoMessage() {}
+
+func (x *PerformanceSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PerformanceSnapshot.ProtoReflect.Descriptor instead.
+func (*PerformanceSnapshot) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *PerformanceSnapshot) GetCollectedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CollectedAt
+	}
+	return nil
+}
+
+func (x *PerformanceSnapshot) GetCpu() *CPUPerformance {
+	if x != nil {
+		return x.Cpu
+	}
+	return nil
+}
+
+func (x *PerformanceSnapshot) GetMemory() *MemoryPerformance {
+	if x != nil {
+		return x.Memory
+	}
+	return nil
+}
+
+func (x *PerformanceSnapshot) GetStorage() *StoragePerformance {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *PerformanceSnapshot) GetNetwork() *NetworkPerformance {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+// CPUPerformance represents system-wide CPU utilization
+// over a measured sampling interval.
+type CPUPerformance struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	UsagePercent         float64                `protobuf:"fixed64,1,opt,name=usage_percent,json=usagePercent,proto3" json:"usage_percent,omitempty"`
+	SampleIntervalMillis int64                  `protobuf:"varint,2,opt,name=sample_interval_millis,json=sampleIntervalMillis,proto3" json:"sample_interval_millis,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *CPUPerformance) Reset() {
+	*x = CPUPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CPUPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CPUPerformance) ProtoMessage() {}
+
+func (x *CPUPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CPUPerformance.ProtoReflect.Descriptor instead.
+func (*CPUPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CPUPerformance) GetUsagePercent() float64 {
+	if x != nil {
+		return x.UsagePercent
+	}
+	return 0
+}
+
+func (x *CPUPerformance) GetSampleIntervalMillis() int64 {
+	if x != nil {
+		return x.SampleIntervalMillis
+	}
+	return 0
+}
+
+// MemoryPerformance represents system-wide memory
+// capacity and utilization.
+type MemoryPerformance struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TotalBytes     uint64                 `protobuf:"varint,1,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	AvailableBytes uint64                 `protobuf:"varint,2,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
+	UsedBytes      uint64                 `protobuf:"varint,3,opt,name=used_bytes,json=usedBytes,proto3" json:"used_bytes,omitempty"`
+	UsagePercent   float64                `protobuf:"fixed64,4,opt,name=usage_percent,json=usagePercent,proto3" json:"usage_percent,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MemoryPerformance) Reset() {
+	*x = MemoryPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoryPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoryPerformance) ProtoMessage() {}
+
+func (x *MemoryPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoryPerformance.ProtoReflect.Descriptor instead.
+func (*MemoryPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MemoryPerformance) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
+func (x *MemoryPerformance) GetAvailableBytes() uint64 {
+	if x != nil {
+		return x.AvailableBytes
+	}
+	return 0
+}
+
+func (x *MemoryPerformance) GetUsedBytes() uint64 {
+	if x != nil {
+		return x.UsedBytes
+	}
+	return 0
+}
+
+func (x *MemoryPerformance) GetUsagePercent() float64 {
+	if x != nil {
+		return x.UsagePercent
+	}
+	return 0
+}
+
+// StoragePerformance contains mounted filesystem
+// capacity, cumulative disk activity, and disk rates.
+type StoragePerformance struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Filesystems   []*FilesystemPerformance `protobuf:"bytes,1,rep,name=filesystems,proto3" json:"filesystems,omitempty"`
+	Disks         []*DiskPerformance       `protobuf:"bytes,2,rep,name=disks,proto3" json:"disks,omitempty"`
+	DiskRates     []*DiskRate              `protobuf:"bytes,3,rep,name=disk_rates,json=diskRates,proto3" json:"disk_rates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StoragePerformance) Reset() {
+	*x = StoragePerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StoragePerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoragePerformance) ProtoMessage() {}
+
+func (x *StoragePerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoragePerformance.ProtoReflect.Descriptor instead.
+func (*StoragePerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *StoragePerformance) GetFilesystems() []*FilesystemPerformance {
+	if x != nil {
+		return x.Filesystems
+	}
+	return nil
+}
+
+func (x *StoragePerformance) GetDisks() []*DiskPerformance {
+	if x != nil {
+		return x.Disks
+	}
+	return nil
+}
+
+func (x *StoragePerformance) GetDiskRates() []*DiskRate {
+	if x != nil {
+		return x.DiskRates
+	}
+	return nil
+}
+
+// FilesystemPerformance describes an individual
+// mounted filesystem and its capacity.
+type FilesystemPerformance struct {
+	state          protoimpl.MessageState         `protogen:"open.v1"`
+	Source         string                         `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	MountPoint     string                         `protobuf:"bytes,2,opt,name=mount_point,json=mountPoint,proto3" json:"mount_point,omitempty"`
+	FilesystemType string                         `protobuf:"bytes,3,opt,name=filesystem_type,json=filesystemType,proto3" json:"filesystem_type,omitempty"`
+	ReadOnly       bool                           `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	Capacity       *FilesystemCapacityPerformance `protobuf:"bytes,5,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FilesystemPerformance) Reset() {
+	*x = FilesystemPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FilesystemPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FilesystemPerformance) ProtoMessage() {}
+
+func (x *FilesystemPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FilesystemPerformance.ProtoReflect.Descriptor instead.
+func (*FilesystemPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *FilesystemPerformance) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *FilesystemPerformance) GetMountPoint() string {
+	if x != nil {
+		return x.MountPoint
+	}
+	return ""
+}
+
+func (x *FilesystemPerformance) GetFilesystemType() string {
+	if x != nil {
+		return x.FilesystemType
+	}
+	return ""
+}
+
+func (x *FilesystemPerformance) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+func (x *FilesystemPerformance) GetCapacity() *FilesystemCapacityPerformance {
+	if x != nil {
+		return x.Capacity
+	}
+	return nil
+}
+
+// FilesystemCapacityPerformance represents filesystem
+// capacity and utilization in bytes.
+type FilesystemCapacityPerformance struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TotalBytes     uint64                 `protobuf:"varint,1,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	FreeBytes      uint64                 `protobuf:"varint,2,opt,name=free_bytes,json=freeBytes,proto3" json:"free_bytes,omitempty"`
+	AvailableBytes uint64                 `protobuf:"varint,3,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
+	UsedBytes      uint64                 `protobuf:"varint,4,opt,name=used_bytes,json=usedBytes,proto3" json:"used_bytes,omitempty"`
+	ReservedBytes  uint64                 `protobuf:"varint,5,opt,name=reserved_bytes,json=reservedBytes,proto3" json:"reserved_bytes,omitempty"`
+	UsagePercent   float64                `protobuf:"fixed64,6,opt,name=usage_percent,json=usagePercent,proto3" json:"usage_percent,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FilesystemCapacityPerformance) Reset() {
+	*x = FilesystemCapacityPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FilesystemCapacityPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FilesystemCapacityPerformance) ProtoMessage() {}
+
+func (x *FilesystemCapacityPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FilesystemCapacityPerformance.ProtoReflect.Descriptor instead.
+func (*FilesystemCapacityPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *FilesystemCapacityPerformance) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
+func (x *FilesystemCapacityPerformance) GetFreeBytes() uint64 {
+	if x != nil {
+		return x.FreeBytes
+	}
+	return 0
+}
+
+func (x *FilesystemCapacityPerformance) GetAvailableBytes() uint64 {
+	if x != nil {
+		return x.AvailableBytes
+	}
+	return 0
+}
+
+func (x *FilesystemCapacityPerformance) GetUsedBytes() uint64 {
+	if x != nil {
+		return x.UsedBytes
+	}
+	return 0
+}
+
+func (x *FilesystemCapacityPerformance) GetReservedBytes() uint64 {
+	if x != nil {
+		return x.ReservedBytes
+	}
+	return 0
+}
+
+func (x *FilesystemCapacityPerformance) GetUsagePercent() float64 {
+	if x != nil {
+		return x.UsagePercent
+	}
+	return 0
+}
+
+// DiskPerformance contains cumulative activity
+// counters for an individual storage device.
+type DiskPerformance struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Device          string                 `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	ReadBytes       uint64                 `protobuf:"varint,2,opt,name=read_bytes,json=readBytes,proto3" json:"read_bytes,omitempty"`
+	WriteBytes      uint64                 `protobuf:"varint,3,opt,name=write_bytes,json=writeBytes,proto3" json:"write_bytes,omitempty"`
+	ReadOperations  uint64                 `protobuf:"varint,4,opt,name=read_operations,json=readOperations,proto3" json:"read_operations,omitempty"`
+	WriteOperations uint64                 `protobuf:"varint,5,opt,name=write_operations,json=writeOperations,proto3" json:"write_operations,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DiskPerformance) Reset() {
+	*x = DiskPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskPerformance) ProtoMessage() {}
+
+func (x *DiskPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskPerformance.ProtoReflect.Descriptor instead.
+func (*DiskPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *DiskPerformance) GetDevice() string {
+	if x != nil {
+		return x.Device
+	}
+	return ""
+}
+
+func (x *DiskPerformance) GetReadBytes() uint64 {
+	if x != nil {
+		return x.ReadBytes
+	}
+	return 0
+}
+
+func (x *DiskPerformance) GetWriteBytes() uint64 {
+	if x != nil {
+		return x.WriteBytes
+	}
+	return 0
+}
+
+func (x *DiskPerformance) GetReadOperations() uint64 {
+	if x != nil {
+		return x.ReadOperations
+	}
+	return 0
+}
+
+func (x *DiskPerformance) GetWriteOperations() uint64 {
+	if x != nil {
+		return x.WriteOperations
+	}
+	return 0
+}
+
+// DiskRate represents calculated storage device
+// activity over a measured sampling interval.
+type DiskRate struct {
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Device                   string                 `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	ReadBytesPerSecond       float64                `protobuf:"fixed64,2,opt,name=read_bytes_per_second,json=readBytesPerSecond,proto3" json:"read_bytes_per_second,omitempty"`
+	WriteBytesPerSecond      float64                `protobuf:"fixed64,3,opt,name=write_bytes_per_second,json=writeBytesPerSecond,proto3" json:"write_bytes_per_second,omitempty"`
+	ReadOperationsPerSecond  float64                `protobuf:"fixed64,4,opt,name=read_operations_per_second,json=readOperationsPerSecond,proto3" json:"read_operations_per_second,omitempty"`
+	WriteOperationsPerSecond float64                `protobuf:"fixed64,5,opt,name=write_operations_per_second,json=writeOperationsPerSecond,proto3" json:"write_operations_per_second,omitempty"`
+	SampleIntervalMillis     int64                  `protobuf:"varint,6,opt,name=sample_interval_millis,json=sampleIntervalMillis,proto3" json:"sample_interval_millis,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *DiskRate) Reset() {
+	*x = DiskRate{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskRate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskRate) ProtoMessage() {}
+
+func (x *DiskRate) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskRate.ProtoReflect.Descriptor instead.
+func (*DiskRate) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DiskRate) GetDevice() string {
+	if x != nil {
+		return x.Device
+	}
+	return ""
+}
+
+func (x *DiskRate) GetReadBytesPerSecond() float64 {
+	if x != nil {
+		return x.ReadBytesPerSecond
+	}
+	return 0
+}
+
+func (x *DiskRate) GetWriteBytesPerSecond() float64 {
+	if x != nil {
+		return x.WriteBytesPerSecond
+	}
+	return 0
+}
+
+func (x *DiskRate) GetReadOperationsPerSecond() float64 {
+	if x != nil {
+		return x.ReadOperationsPerSecond
+	}
+	return 0
+}
+
+func (x *DiskRate) GetWriteOperationsPerSecond() float64 {
+	if x != nil {
+		return x.WriteOperationsPerSecond
+	}
+	return 0
+}
+
+func (x *DiskRate) GetSampleIntervalMillis() int64 {
+	if x != nil {
+		return x.SampleIntervalMillis
+	}
+	return 0
+}
+
+// NetworkPerformance contains network interface
+// metadata, cumulative counters, and calculated rates.
+type NetworkPerformance struct {
+	state          protoimpl.MessageState         `protogen:"open.v1"`
+	Interfaces     []*NetworkInterfacePerformance `protobuf:"bytes,1,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
+	InterfaceRates []*NetworkInterfaceRate        `protobuf:"bytes,2,rep,name=interface_rates,json=interfaceRates,proto3" json:"interface_rates,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *NetworkPerformance) Reset() {
+	*x = NetworkPerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkPerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkPerformance) ProtoMessage() {}
+
+func (x *NetworkPerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkPerformance.ProtoReflect.Descriptor instead.
+func (*NetworkPerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *NetworkPerformance) GetInterfaces() []*NetworkInterfacePerformance {
+	if x != nil {
+		return x.Interfaces
+	}
+	return nil
+}
+
+func (x *NetworkPerformance) GetInterfaceRates() []*NetworkInterfaceRate {
+	if x != nil {
+		return x.InterfaceRates
+	}
+	return nil
+}
+
+// NetworkInterfacePerformance describes a network
+// interface and its cumulative activity counters.
+type NetworkInterfacePerformance struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Name     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Index    uint32                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	Up       bool                   `protobuf:"varint,3,opt,name=up,proto3" json:"up,omitempty"`
+	Loopback bool                   `protobuf:"varint,4,opt,name=loopback,proto3" json:"loopback,omitempty"`
+	Mtu      uint32                 `protobuf:"varint,5,opt,name=mtu,proto3" json:"mtu,omitempty"`
+	// Unset when the native link speed is unavailable.
+	LinkSpeedBitsPerSecond *uint64 `protobuf:"varint,6,opt,name=link_speed_bits_per_second,json=linkSpeedBitsPerSecond,proto3,oneof" json:"link_speed_bits_per_second,omitempty"`
+	ReceivedBytes          uint64  `protobuf:"varint,7,opt,name=received_bytes,json=receivedBytes,proto3" json:"received_bytes,omitempty"`
+	ReceivedPackets        uint64  `protobuf:"varint,8,opt,name=received_packets,json=receivedPackets,proto3" json:"received_packets,omitempty"`
+	ReceiveErrors          uint64  `protobuf:"varint,9,opt,name=receive_errors,json=receiveErrors,proto3" json:"receive_errors,omitempty"`
+	TransmittedBytes       uint64  `protobuf:"varint,10,opt,name=transmitted_bytes,json=transmittedBytes,proto3" json:"transmitted_bytes,omitempty"`
+	TransmittedPackets     uint64  `protobuf:"varint,11,opt,name=transmitted_packets,json=transmittedPackets,proto3" json:"transmitted_packets,omitempty"`
+	TransmitErrors         uint64  `protobuf:"varint,12,opt,name=transmit_errors,json=transmitErrors,proto3" json:"transmit_errors,omitempty"`
+	// Unset when the native counter is unavailable.
+	ReceiveDropped  *uint64 `protobuf:"varint,13,opt,name=receive_dropped,json=receiveDropped,proto3,oneof" json:"receive_dropped,omitempty"`
+	TransmitDropped *uint64 `protobuf:"varint,14,opt,name=transmit_dropped,json=transmitDropped,proto3,oneof" json:"transmit_dropped,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *NetworkInterfacePerformance) Reset() {
+	*x = NetworkInterfacePerformance{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInterfacePerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInterfacePerformance) ProtoMessage() {}
+
+func (x *NetworkInterfacePerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInterfacePerformance.ProtoReflect.Descriptor instead.
+func (*NetworkInterfacePerformance) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *NetworkInterfacePerformance) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *NetworkInterfacePerformance) GetIndex() uint32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetUp() bool {
+	if x != nil {
+		return x.Up
+	}
+	return false
+}
+
+func (x *NetworkInterfacePerformance) GetLoopback() bool {
+	if x != nil {
+		return x.Loopback
+	}
+	return false
+}
+
+func (x *NetworkInterfacePerformance) GetMtu() uint32 {
+	if x != nil {
+		return x.Mtu
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetLinkSpeedBitsPerSecond() uint64 {
+	if x != nil && x.LinkSpeedBitsPerSecond != nil {
+		return *x.LinkSpeedBitsPerSecond
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetReceivedBytes() uint64 {
+	if x != nil {
+		return x.ReceivedBytes
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetReceivedPackets() uint64 {
+	if x != nil {
+		return x.ReceivedPackets
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetReceiveErrors() uint64 {
+	if x != nil {
+		return x.ReceiveErrors
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetTransmittedBytes() uint64 {
+	if x != nil {
+		return x.TransmittedBytes
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetTransmittedPackets() uint64 {
+	if x != nil {
+		return x.TransmittedPackets
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetTransmitErrors() uint64 {
+	if x != nil {
+		return x.TransmitErrors
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetReceiveDropped() uint64 {
+	if x != nil && x.ReceiveDropped != nil {
+		return *x.ReceiveDropped
+	}
+	return 0
+}
+
+func (x *NetworkInterfacePerformance) GetTransmitDropped() uint64 {
+	if x != nil && x.TransmitDropped != nil {
+		return *x.TransmitDropped
+	}
+	return 0
+}
+
+// NetworkInterfaceRate represents calculated network
+// activity over a measured sampling interval.
+type NetworkInterfaceRate struct {
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Name                     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Index                    uint32                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	ReceiveBytesPerSecond    float64                `protobuf:"fixed64,3,opt,name=receive_bytes_per_second,json=receiveBytesPerSecond,proto3" json:"receive_bytes_per_second,omitempty"`
+	TransmitBytesPerSecond   float64                `protobuf:"fixed64,4,opt,name=transmit_bytes_per_second,json=transmitBytesPerSecond,proto3" json:"transmit_bytes_per_second,omitempty"`
+	ReceivePacketsPerSecond  float64                `protobuf:"fixed64,5,opt,name=receive_packets_per_second,json=receivePacketsPerSecond,proto3" json:"receive_packets_per_second,omitempty"`
+	TransmitPacketsPerSecond float64                `protobuf:"fixed64,6,opt,name=transmit_packets_per_second,json=transmitPacketsPerSecond,proto3" json:"transmit_packets_per_second,omitempty"`
+	SampleIntervalMillis     int64                  `protobuf:"varint,7,opt,name=sample_interval_millis,json=sampleIntervalMillis,proto3" json:"sample_interval_millis,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *NetworkInterfaceRate) Reset() {
+	*x = NetworkInterfaceRate{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInterfaceRate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInterfaceRate) ProtoMessage() {}
+
+func (x *NetworkInterfaceRate) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInterfaceRate.ProtoReflect.Descriptor instead.
+func (*NetworkInterfaceRate) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *NetworkInterfaceRate) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *NetworkInterfaceRate) GetIndex() uint32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *NetworkInterfaceRate) GetReceiveBytesPerSecond() float64 {
+	if x != nil {
+		return x.ReceiveBytesPerSecond
+	}
+	return 0
+}
+
+func (x *NetworkInterfaceRate) GetTransmitBytesPerSecond() float64 {
+	if x != nil {
+		return x.TransmitBytesPerSecond
+	}
+	return 0
+}
+
+func (x *NetworkInterfaceRate) GetReceivePacketsPerSecond() float64 {
+	if x != nil {
+		return x.ReceivePacketsPerSecond
+	}
+	return 0
+}
+
+func (x *NetworkInterfaceRate) GetTransmitPacketsPerSecond() float64 {
+	if x != nil {
+		return x.TransmitPacketsPerSecond
+	}
+	return 0
+}
+
+func (x *NetworkInterfaceRate) GetSampleIntervalMillis() int64 {
+	if x != nil {
+		return x.SampleIntervalMillis
+	}
+	return 0
+}
+
+// ReportPerformanceRequest submits a complete
+// performance snapshot for an enrolled device.
+//
+// Authentication uses the existing agent bearer
+// credential supplied through gRPC metadata.
+type ReportPerformanceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Registered device identity.
+	DeviceId string `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	// Unique identifier for this performance sample.
+	// Retries must reuse the same identifier and snapshot.
+	SampleId string `protobuf:"bytes,2,opt,name=sample_id,json=sampleId,proto3" json:"sample_id,omitempty"`
+	// Complete system-wide performance measurements.
+	Snapshot      *PerformanceSnapshot `protobuf:"bytes,3,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportPerformanceRequest) Reset() {
+	*x = ReportPerformanceRequest{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportPerformanceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportPerformanceRequest) ProtoMessage() {}
+
+func (x *ReportPerformanceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportPerformanceRequest.ProtoReflect.Descriptor instead.
+func (*ReportPerformanceRequest) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ReportPerformanceRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *ReportPerformanceRequest) GetSampleId() string {
+	if x != nil {
+		return x.SampleId
+	}
+	return ""
+}
+
+func (x *ReportPerformanceRequest) GetSnapshot() *PerformanceSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+// ReportPerformanceResponse acknowledges a
+// successfully persisted performance snapshot.
+type ReportPerformanceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when the snapshot has been committed
+	// or an identical stored sample was recognized.
+	Accepted bool `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	// Identifier of the acknowledged sample.
+	SampleId string `protobuf:"bytes,2,opt,name=sample_id,json=sampleId,proto3" json:"sample_id,omitempty"`
+	// Original appliance receipt timestamp.
+	// Identical retries preserve this timestamp.
+	ReceivedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportPerformanceResponse) Reset() {
+	*x = ReportPerformanceResponse{}
+	mi := &file_rackos_v1_agent_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportPerformanceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportPerformanceResponse) ProtoMessage() {}
+
+func (x *ReportPerformanceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rackos_v1_agent_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportPerformanceResponse.ProtoReflect.Descriptor instead.
+func (*ReportPerformanceResponse) Descriptor() ([]byte, []int) {
+	return file_rackos_v1_agent_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ReportPerformanceResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *ReportPerformanceResponse) GetSampleId() string {
+	if x != nil {
+		return x.SampleId
+	}
+	return ""
+}
+
+func (x *ReportPerformanceResponse) GetReceivedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReceivedAt
+	}
+	return nil
+}
+
 var File_rackos_v1_agent_proto protoreflect.FileDescriptor
 
 const file_rackos_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x15rackos/v1/agent.proto\x12\trackos.v1\"\x81\x01\n" +
+	"\x15rackos/v1/agent.proto\x12\trackos.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
 	"\n" +
 	"DeviceInfo\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
@@ -577,11 +1606,106 @@ const file_rackos_v1_agent_proto_rawDesc = "" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12:\n" +
 	"\tinventory\x18\x02 \x01(\v2\x1c.rackos.v1.HardwareInventoryR\tinventory\"5\n" +
 	"\x17ReportInventoryResponse\x12\x1a\n" +
-	"\baccepted\x18\x01 \x01(\bR\baccepted2\xef\x01\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\"\xa9\x02\n" +
+	"\x13PerformanceSnapshot\x12=\n" +
+	"\fcollected_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vcollectedAt\x12+\n" +
+	"\x03cpu\x18\x02 \x01(\v2\x19.rackos.v1.CPUPerformanceR\x03cpu\x124\n" +
+	"\x06memory\x18\x03 \x01(\v2\x1c.rackos.v1.MemoryPerformanceR\x06memory\x127\n" +
+	"\astorage\x18\x04 \x01(\v2\x1d.rackos.v1.StoragePerformanceR\astorage\x127\n" +
+	"\anetwork\x18\x05 \x01(\v2\x1d.rackos.v1.NetworkPerformanceR\anetwork\"k\n" +
+	"\x0eCPUPerformance\x12#\n" +
+	"\rusage_percent\x18\x01 \x01(\x01R\fusagePercent\x124\n" +
+	"\x16sample_interval_millis\x18\x02 \x01(\x03R\x14sampleIntervalMillis\"\xa1\x01\n" +
+	"\x11MemoryPerformance\x12\x1f\n" +
+	"\vtotal_bytes\x18\x01 \x01(\x04R\n" +
+	"totalBytes\x12'\n" +
+	"\x0favailable_bytes\x18\x02 \x01(\x04R\x0eavailableBytes\x12\x1d\n" +
+	"\n" +
+	"used_bytes\x18\x03 \x01(\x04R\tusedBytes\x12#\n" +
+	"\rusage_percent\x18\x04 \x01(\x01R\fusagePercent\"\xbe\x01\n" +
+	"\x12StoragePerformance\x12B\n" +
+	"\vfilesystems\x18\x01 \x03(\v2 .rackos.v1.FilesystemPerformanceR\vfilesystems\x120\n" +
+	"\x05disks\x18\x02 \x03(\v2\x1a.rackos.v1.DiskPerformanceR\x05disks\x122\n" +
+	"\n" +
+	"disk_rates\x18\x03 \x03(\v2\x13.rackos.v1.DiskRateR\tdiskRates\"\xdc\x01\n" +
+	"\x15FilesystemPerformance\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12\x1f\n" +
+	"\vmount_point\x18\x02 \x01(\tR\n" +
+	"mountPoint\x12'\n" +
+	"\x0ffilesystem_type\x18\x03 \x01(\tR\x0efilesystemType\x12\x1b\n" +
+	"\tread_only\x18\x04 \x01(\bR\breadOnly\x12D\n" +
+	"\bcapacity\x18\x05 \x01(\v2(.rackos.v1.FilesystemCapacityPerformanceR\bcapacity\"\xf3\x01\n" +
+	"\x1dFilesystemCapacityPerformance\x12\x1f\n" +
+	"\vtotal_bytes\x18\x01 \x01(\x04R\n" +
+	"totalBytes\x12\x1d\n" +
+	"\n" +
+	"free_bytes\x18\x02 \x01(\x04R\tfreeBytes\x12'\n" +
+	"\x0favailable_bytes\x18\x03 \x01(\x04R\x0eavailableBytes\x12\x1d\n" +
+	"\n" +
+	"used_bytes\x18\x04 \x01(\x04R\tusedBytes\x12%\n" +
+	"\x0ereserved_bytes\x18\x05 \x01(\x04R\rreservedBytes\x12#\n" +
+	"\rusage_percent\x18\x06 \x01(\x01R\fusagePercent\"\xbd\x01\n" +
+	"\x0fDiskPerformance\x12\x16\n" +
+	"\x06device\x18\x01 \x01(\tR\x06device\x12\x1d\n" +
+	"\n" +
+	"read_bytes\x18\x02 \x01(\x04R\treadBytes\x12\x1f\n" +
+	"\vwrite_bytes\x18\x03 \x01(\x04R\n" +
+	"writeBytes\x12'\n" +
+	"\x0fread_operations\x18\x04 \x01(\x04R\x0ereadOperations\x12)\n" +
+	"\x10write_operations\x18\x05 \x01(\x04R\x0fwriteOperations\"\xbc\x02\n" +
+	"\bDiskRate\x12\x16\n" +
+	"\x06device\x18\x01 \x01(\tR\x06device\x121\n" +
+	"\x15read_bytes_per_second\x18\x02 \x01(\x01R\x12readBytesPerSecond\x123\n" +
+	"\x16write_bytes_per_second\x18\x03 \x01(\x01R\x13writeBytesPerSecond\x12;\n" +
+	"\x1aread_operations_per_second\x18\x04 \x01(\x01R\x17readOperationsPerSecond\x12=\n" +
+	"\x1bwrite_operations_per_second\x18\x05 \x01(\x01R\x18writeOperationsPerSecond\x124\n" +
+	"\x16sample_interval_millis\x18\x06 \x01(\x03R\x14sampleIntervalMillis\"\xa6\x01\n" +
+	"\x12NetworkPerformance\x12F\n" +
+	"\n" +
+	"interfaces\x18\x01 \x03(\v2&.rackos.v1.NetworkInterfacePerformanceR\n" +
+	"interfaces\x12H\n" +
+	"\x0finterface_rates\x18\x02 \x03(\v2\x1f.rackos.v1.NetworkInterfaceRateR\x0einterfaceRates\"\xec\x04\n" +
+	"\x1bNetworkInterfacePerformance\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\rR\x05index\x12\x0e\n" +
+	"\x02up\x18\x03 \x01(\bR\x02up\x12\x1a\n" +
+	"\bloopback\x18\x04 \x01(\bR\bloopback\x12\x10\n" +
+	"\x03mtu\x18\x05 \x01(\rR\x03mtu\x12?\n" +
+	"\x1alink_speed_bits_per_second\x18\x06 \x01(\x04H\x00R\x16linkSpeedBitsPerSecond\x88\x01\x01\x12%\n" +
+	"\x0ereceived_bytes\x18\a \x01(\x04R\rreceivedBytes\x12)\n" +
+	"\x10received_packets\x18\b \x01(\x04R\x0freceivedPackets\x12%\n" +
+	"\x0ereceive_errors\x18\t \x01(\x04R\rreceiveErrors\x12+\n" +
+	"\x11transmitted_bytes\x18\n" +
+	" \x01(\x04R\x10transmittedBytes\x12/\n" +
+	"\x13transmitted_packets\x18\v \x01(\x04R\x12transmittedPackets\x12'\n" +
+	"\x0ftransmit_errors\x18\f \x01(\x04R\x0etransmitErrors\x12,\n" +
+	"\x0freceive_dropped\x18\r \x01(\x04H\x01R\x0ereceiveDropped\x88\x01\x01\x12.\n" +
+	"\x10transmit_dropped\x18\x0e \x01(\x04H\x02R\x0ftransmitDropped\x88\x01\x01B\x1d\n" +
+	"\x1b_link_speed_bits_per_secondB\x12\n" +
+	"\x10_receive_droppedB\x13\n" +
+	"\x11_transmit_dropped\"\xe6\x02\n" +
+	"\x14NetworkInterfaceRate\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\rR\x05index\x127\n" +
+	"\x18receive_bytes_per_second\x18\x03 \x01(\x01R\x15receiveBytesPerSecond\x129\n" +
+	"\x19transmit_bytes_per_second\x18\x04 \x01(\x01R\x16transmitBytesPerSecond\x12;\n" +
+	"\x1areceive_packets_per_second\x18\x05 \x01(\x01R\x17receivePacketsPerSecond\x12=\n" +
+	"\x1btransmit_packets_per_second\x18\x06 \x01(\x01R\x18transmitPacketsPerSecond\x124\n" +
+	"\x16sample_interval_millis\x18\a \x01(\x03R\x14sampleIntervalMillis\"\x90\x01\n" +
+	"\x18ReportPerformanceRequest\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x1b\n" +
+	"\tsample_id\x18\x02 \x01(\tR\bsampleId\x12:\n" +
+	"\bsnapshot\x18\x03 \x01(\v2\x1e.rackos.v1.PerformanceSnapshotR\bsnapshot\"\x91\x01\n" +
+	"\x19ReportPerformanceResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x1b\n" +
+	"\tsample_id\x18\x02 \x01(\tR\bsampleId\x12;\n" +
+	"\vreceived_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"receivedAt2\xcf\x02\n" +
 	"\fAgentService\x12=\n" +
 	"\x06Enroll\x12\x18.rackos.v1.EnrollRequest\x1a\x19.rackos.v1.EnrollResponse\x12F\n" +
 	"\tHeartbeat\x12\x1b.rackos.v1.HeartbeatRequest\x1a\x1c.rackos.v1.HeartbeatResponse\x12X\n" +
-	"\x0fReportInventory\x12!.rackos.v1.ReportInventoryRequest\x1a\".rackos.v1.ReportInventoryResponseB<Z:github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1b\x06proto3"
+	"\x0fReportInventory\x12!.rackos.v1.ReportInventoryRequest\x1a\".rackos.v1.ReportInventoryResponse\x12^\n" +
+	"\x11ReportPerformance\x12#.rackos.v1.ReportPerformanceRequest\x1a$.rackos.v1.ReportPerformanceResponseB<Z:github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1b\x06proto3"
 
 var (
 	file_rackos_v1_agent_proto_rawDescOnce sync.Once
@@ -595,31 +1719,60 @@ func file_rackos_v1_agent_proto_rawDescGZIP() []byte {
 	return file_rackos_v1_agent_proto_rawDescData
 }
 
-var file_rackos_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_rackos_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_rackos_v1_agent_proto_goTypes = []any{
-	(*DeviceInfo)(nil),              // 0: rackos.v1.DeviceInfo
-	(*EnrollRequest)(nil),           // 1: rackos.v1.EnrollRequest
-	(*EnrollResponse)(nil),          // 2: rackos.v1.EnrollResponse
-	(*HeartbeatRequest)(nil),        // 3: rackos.v1.HeartbeatRequest
-	(*HeartbeatResponse)(nil),       // 4: rackos.v1.HeartbeatResponse
-	(*HardwareInventory)(nil),       // 5: rackos.v1.HardwareInventory
-	(*ReportInventoryRequest)(nil),  // 6: rackos.v1.ReportInventoryRequest
-	(*ReportInventoryResponse)(nil), // 7: rackos.v1.ReportInventoryResponse
+	(*DeviceInfo)(nil),                    // 0: rackos.v1.DeviceInfo
+	(*EnrollRequest)(nil),                 // 1: rackos.v1.EnrollRequest
+	(*EnrollResponse)(nil),                // 2: rackos.v1.EnrollResponse
+	(*HeartbeatRequest)(nil),              // 3: rackos.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),             // 4: rackos.v1.HeartbeatResponse
+	(*HardwareInventory)(nil),             // 5: rackos.v1.HardwareInventory
+	(*ReportInventoryRequest)(nil),        // 6: rackos.v1.ReportInventoryRequest
+	(*ReportInventoryResponse)(nil),       // 7: rackos.v1.ReportInventoryResponse
+	(*PerformanceSnapshot)(nil),           // 8: rackos.v1.PerformanceSnapshot
+	(*CPUPerformance)(nil),                // 9: rackos.v1.CPUPerformance
+	(*MemoryPerformance)(nil),             // 10: rackos.v1.MemoryPerformance
+	(*StoragePerformance)(nil),            // 11: rackos.v1.StoragePerformance
+	(*FilesystemPerformance)(nil),         // 12: rackos.v1.FilesystemPerformance
+	(*FilesystemCapacityPerformance)(nil), // 13: rackos.v1.FilesystemCapacityPerformance
+	(*DiskPerformance)(nil),               // 14: rackos.v1.DiskPerformance
+	(*DiskRate)(nil),                      // 15: rackos.v1.DiskRate
+	(*NetworkPerformance)(nil),            // 16: rackos.v1.NetworkPerformance
+	(*NetworkInterfacePerformance)(nil),   // 17: rackos.v1.NetworkInterfacePerformance
+	(*NetworkInterfaceRate)(nil),          // 18: rackos.v1.NetworkInterfaceRate
+	(*ReportPerformanceRequest)(nil),      // 19: rackos.v1.ReportPerformanceRequest
+	(*ReportPerformanceResponse)(nil),     // 20: rackos.v1.ReportPerformanceResponse
+	(*timestamppb.Timestamp)(nil),         // 21: google.protobuf.Timestamp
 }
 var file_rackos_v1_agent_proto_depIdxs = []int32{
-	0, // 0: rackos.v1.EnrollRequest.device:type_name -> rackos.v1.DeviceInfo
-	5, // 1: rackos.v1.ReportInventoryRequest.inventory:type_name -> rackos.v1.HardwareInventory
-	1, // 2: rackos.v1.AgentService.Enroll:input_type -> rackos.v1.EnrollRequest
-	3, // 3: rackos.v1.AgentService.Heartbeat:input_type -> rackos.v1.HeartbeatRequest
-	6, // 4: rackos.v1.AgentService.ReportInventory:input_type -> rackos.v1.ReportInventoryRequest
-	2, // 5: rackos.v1.AgentService.Enroll:output_type -> rackos.v1.EnrollResponse
-	4, // 6: rackos.v1.AgentService.Heartbeat:output_type -> rackos.v1.HeartbeatResponse
-	7, // 7: rackos.v1.AgentService.ReportInventory:output_type -> rackos.v1.ReportInventoryResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0,  // 0: rackos.v1.EnrollRequest.device:type_name -> rackos.v1.DeviceInfo
+	5,  // 1: rackos.v1.ReportInventoryRequest.inventory:type_name -> rackos.v1.HardwareInventory
+	21, // 2: rackos.v1.PerformanceSnapshot.collected_at:type_name -> google.protobuf.Timestamp
+	9,  // 3: rackos.v1.PerformanceSnapshot.cpu:type_name -> rackos.v1.CPUPerformance
+	10, // 4: rackos.v1.PerformanceSnapshot.memory:type_name -> rackos.v1.MemoryPerformance
+	11, // 5: rackos.v1.PerformanceSnapshot.storage:type_name -> rackos.v1.StoragePerformance
+	16, // 6: rackos.v1.PerformanceSnapshot.network:type_name -> rackos.v1.NetworkPerformance
+	12, // 7: rackos.v1.StoragePerformance.filesystems:type_name -> rackos.v1.FilesystemPerformance
+	14, // 8: rackos.v1.StoragePerformance.disks:type_name -> rackos.v1.DiskPerformance
+	15, // 9: rackos.v1.StoragePerformance.disk_rates:type_name -> rackos.v1.DiskRate
+	13, // 10: rackos.v1.FilesystemPerformance.capacity:type_name -> rackos.v1.FilesystemCapacityPerformance
+	17, // 11: rackos.v1.NetworkPerformance.interfaces:type_name -> rackos.v1.NetworkInterfacePerformance
+	18, // 12: rackos.v1.NetworkPerformance.interface_rates:type_name -> rackos.v1.NetworkInterfaceRate
+	8,  // 13: rackos.v1.ReportPerformanceRequest.snapshot:type_name -> rackos.v1.PerformanceSnapshot
+	21, // 14: rackos.v1.ReportPerformanceResponse.received_at:type_name -> google.protobuf.Timestamp
+	1,  // 15: rackos.v1.AgentService.Enroll:input_type -> rackos.v1.EnrollRequest
+	3,  // 16: rackos.v1.AgentService.Heartbeat:input_type -> rackos.v1.HeartbeatRequest
+	6,  // 17: rackos.v1.AgentService.ReportInventory:input_type -> rackos.v1.ReportInventoryRequest
+	19, // 18: rackos.v1.AgentService.ReportPerformance:input_type -> rackos.v1.ReportPerformanceRequest
+	2,  // 19: rackos.v1.AgentService.Enroll:output_type -> rackos.v1.EnrollResponse
+	4,  // 20: rackos.v1.AgentService.Heartbeat:output_type -> rackos.v1.HeartbeatResponse
+	7,  // 21: rackos.v1.AgentService.ReportInventory:output_type -> rackos.v1.ReportInventoryResponse
+	20, // 22: rackos.v1.AgentService.ReportPerformance:output_type -> rackos.v1.ReportPerformanceResponse
+	19, // [19:23] is the sub-list for method output_type
+	15, // [15:19] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_rackos_v1_agent_proto_init() }
@@ -627,13 +1780,14 @@ func file_rackos_v1_agent_proto_init() {
 	if File_rackos_v1_agent_proto != nil {
 		return
 	}
+	file_rackos_v1_agent_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rackos_v1_agent_proto_rawDesc), len(file_rackos_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

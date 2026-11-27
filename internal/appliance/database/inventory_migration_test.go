@@ -206,7 +206,7 @@ func assertInventorySchemaVersion(
 func TestInventoryMigrationFreshInstallation(t *testing.T) {
 	db := openInventoryTestDB(t)
 
-	assertInventorySchemaVersion(t, db, 5)
+	assertInventorySchemaVersion(t, db, len(migrations))
 
 	inventoryAssertCount(t, db, 1, `
 		SELECT COUNT(*)
@@ -329,7 +329,7 @@ func TestInventoryMigrationUpgradeFromVersionFour(
 	}
 	defer db.Close()
 
-	assertInventorySchemaVersion(t, db, 5)
+	assertInventorySchemaVersion(t, db, len(migrations))
 
 	inventoryAssertCount(t, db, 1, `
 		SELECT COUNT(*)
@@ -636,7 +636,7 @@ func TestInventoryMigrationDatabaseReopen(t *testing.T) {
 	}
 	defer reopened.Close()
 
-	assertInventorySchemaVersion(t, reopened, 5)
+	assertInventorySchemaVersion(t, reopened, len(migrations))
 
 	inventoryAssertCount(t, reopened, 1, `
 		SELECT COUNT(*)

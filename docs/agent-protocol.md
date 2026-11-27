@@ -130,3 +130,229 @@ refresh it every six hours after successful reporting.
 
 See inventory-storage.md for persistence and scheduling
 details.
+
+
+## Performance Reporting
+
+The ReportPerformance RPC allows authenticated agents
+to submit historical performance snapshots to the
+appliance.
+
+Performance reporting is an additive extension to
+version 1 of the agent protocol.
+
+### Request
+
+ReportPerformanceRequest contains:
+
+| Field | Type | Required |
+| --- | --- | --- |
+| device_id | string | Yes |
+| sample_id | string | Yes |
+| snapshot | PerformanceSnapshot | Yes |
+
+The device_id identifies the registered agent.
+
+The sample_id contains a cryptographically random
+128-bit identity encoded as 32 lowercase hexadecimal
+characters.
+
+The same sample identity must be retained throughout
+all retries of an existing performance report.
+
+### Performance Snapshot
+
+PerformanceSnapshot contains:
+
+| Field | Type | Required |
+| --- | --- | --- |
+| collected_at | google.protobuf.Timestamp | Yes |
+| cpu | CPUPerformance | Yes |
+| memory | MemoryPerformance | Yes |
+| storage | StoragePerformance | Yes |
+| network | NetworkPerformance | Yes |
+
+CPU measurements include aggregate utilization and
+the actual sampling interval.
+
+Memory measurements include total, available, and
+used bytes, together with utilization.
+
+Storage measurements include filesystem capacity,
+cumulative disk activity, and calculated disk rates.
+
+Network measurements include interface metadata,
+cumulative activity counters, and calculated
+interface rates.
+
+Optional numeric fields preserve the distinction
+between an unavailable value and an explicit zero.
+
+See api/proto/rackos/v1/agent.proto for the complete
+message definitions.
+
+### Authentication
+
+Reports use the existing agent bearer credential
+through gRPC authorization metadata.
+
+    authorization: Bearer AGENT_TOKEN
+
+Reports are transmitted over verified TLS connections.
+
+The appliance authenticates the reporting device
+before validating the performance payload.
+
+Cross-device credential usage is rejected.
+
+### Validation
+
+Performance validation enforces:
+
+- Required report and snapshot fields.
+- Valid device and sample identities.
+- Valid collection timestamps.
+- Maximum future clock skew of five minutes.
+- Finite CPU and memory utilization percentages.
+- Consistent memory capacity accounting.
+- Consistent filesystem capacity accounting.
+- Valid measurement sampling intervals.
+- Bounded collection sizes.
+- Valid UTF-8 measurement identifiers.
+- Unique disk counter identities.
+- Unique network interface names and indexes.
+- Valid disk and network rate associations.
+- Finite, nonnegative activity rates.
+- Valid optional link speed measurements.
+
+Sampling intervals must be between 1 and 60000
+milliseconds.
+
+Each filesystem, disk, disk rate, network interface,
+and interface rate collection supports at most 256
+entries.
+
+Measurement identifiers support a maximum encoded
+length of 1024 bytes.
+
+Older collection timestamps are permitted.
+
+A report may contain no eligible filesystem, disk,
+or network interface records.
+
+The maximum serialized performance reporting request
+size is 512 KiB.
+
+The gRPC transport also enforces its existing
+1 MiB message size limit.
+
+### Response
+
+ReportPerformanceResponse contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| accepted | bool | Successful report acceptance |
+| sample_id | string | Acknowledged sample identity |
+| received_at | google.protobuf.Timestamp | Original appliance receipt timestamp |
+
+An accepted response indicates that the performance
+transaction has committed or that an identical
+previously committed sample was recognized.
+
+The response sample identity must match the request.
+
+Receipt timestamps originate from the appliance
+clock and use millisecond precision.
+
+Identical retries return the original receipt
+timestamp without modifying the stored record.
+
+The agent validates acceptance, sample identity,
+and receipt timestamp before clearing a pending report.
+
+An invalid acknowledgement does not establish whether
+the appliance persisted the report.
+
+### Status Codes
+
+| Status | Description |
+| --- | --- |
+| OK | Sample committed or identical retry accepted |
+| Unauthenticated | Invalid or missing agent credential |
+| InvalidArgument | Invalid performance report |
+| ResourceExhausted | Reporting or transport resource limit exceeded |
+| AlreadyExists | Sample identity conflicts with stored content |
+| Internal | Appliance or persistence failure |
+| Canceled | Request canceled |
+| DeadlineExceeded | Request deadline exceeded |
+| Unimplemented | Performance reporting not supported |
+
+### Persistence Semantics
+
+Performance samples are stored independently using
+the device identity and sample identity.
+
+Collection timestamps are not unique record
+identifiers.
+
+Multiple samples may share a collection timestamp.
+
+Out-of-order historical samples are accepted when
+otherwise valid.
+
+Existing historical samples are not overwritten by
+new reports.
+
+### Automatic Reporting
+
+Agents collect performance measurements at startup.
+
+After successful acknowledgement, the performance
+worker waits 60 seconds before collecting again.
+
+Temporary reporting failures preserve the pending
+report and retry using exponential backoff.
+
+Retry intervals begin at five seconds and are capped
+at 60 seconds.
+
+Pending reports expire after 15 minutes.
+
+Only one pending performance report is retained.
+
+Authentication failures terminate authenticated
+agent operation.
+
+Unsupported performance reporting does not prevent
+heartbeat or hardware inventory monitoring.
+
+### Compatibility
+
+Existing enrollment, heartbeat, and inventory RPCs
+remain unchanged.
+
+Older agents can operate without performance reporting.
+
+Newer agents disable performance reporting when an
+older appliance returns Unimplemented.
+
+Performance reporting does not require reenrollment.
+
+### Security
+
+- Existing agent credentials are reused.
+- Authentication and persistence are transactional.
+- Successful acknowledgement follows transaction commit.
+- Cross-device reporting is rejected.
+- Revoked credentials cannot report historical samples.
+- Performance reporting does not update heartbeat timestamps.
+- Raw performance payloads and credentials are not logged.
+- Client-facing errors do not expose database details.
+
+Authentication and validation do not establish the
+accuracy of performance information supplied by
+an agent.
+
+See performance-storage.md for historical persistence,
+retry behavior, and current limitations.

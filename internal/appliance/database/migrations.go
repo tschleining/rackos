@@ -128,6 +128,64 @@ var migrations = []string{
 			ON DELETE CASCADE
 	);
 	`,
+
+	// Migration 006: Historical device performance.
+	`
+	CREATE TABLE device_performance (
+		device_id TEXT NOT NULL
+			CHECK(
+				length(CAST(device_id AS BLOB))
+					BETWEEN 1 AND 1024
+			),
+
+		sample_id TEXT NOT NULL
+			CHECK(
+				length(sample_id) = 32
+				AND length(CAST(sample_id AS BLOB)) = 32
+				AND sample_id NOT GLOB '*[^0-9a-f]*'
+			),
+
+		collected_at INTEGER NOT NULL
+			CHECK(
+				typeof(collected_at) = 'integer'
+				AND collected_at > 0
+			),
+
+		received_at INTEGER NOT NULL
+			CHECK(
+				typeof(received_at) = 'integer'
+				AND received_at > 0
+			),
+
+		payload_version INTEGER NOT NULL
+			CHECK(
+				typeof(payload_version) = 'integer'
+				AND payload_version > 0
+			),
+
+		payload BLOB NOT NULL
+			CHECK(
+				typeof(payload) = 'blob'
+				AND length(payload) BETWEEN 1 AND 524288
+			),
+
+		PRIMARY KEY(device_id, sample_id),
+
+		FOREIGN KEY(device_id)
+			REFERENCES devices(id)
+			ON DELETE CASCADE
+	);
+
+	CREATE INDEX idx_device_performance_history
+		ON device_performance(
+			device_id,
+			collected_at,
+			sample_id
+		);
+
+	CREATE INDEX idx_device_performance_received_at
+		ON device_performance(received_at);
+	`,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {

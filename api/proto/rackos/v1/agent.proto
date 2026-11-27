@@ -1,9 +1,13 @@
 
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package rackos.v1;
 
 option go_package = "github.com/tschleining/rackos/api/proto/rackos/v1;rackosv1";
+
+
 
 // AgentService manages communication between
 // RackOS appliances and monitoring agents.
@@ -11,7 +15,9 @@ service AgentService {
   rpc Enroll(EnrollRequest) returns (EnrollResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc ReportInventory(ReportInventoryRequest) returns (ReportInventoryResponse);
+  rpc ReportPerformance(ReportPerformanceRequest) returns (ReportPerformanceResponse);
 }
+
 
 message DeviceInfo {
   string hostname = 1;
@@ -69,4 +75,169 @@ message ReportInventoryRequest {
 
 message ReportInventoryResponse {
   bool accepted = 1;
+}
+
+
+// PerformanceSnapshot contains a complete system-wide
+// performance measurement collected by an agent.
+message PerformanceSnapshot {
+  google.protobuf.Timestamp collected_at = 1;
+
+  CPUPerformance cpu = 2;
+  MemoryPerformance memory = 3;
+  StoragePerformance storage = 4;
+  NetworkPerformance network = 5;
+}
+
+// CPUPerformance represents system-wide CPU utilization
+// over a measured sampling interval.
+message CPUPerformance {
+  double usage_percent = 1;
+  int64 sample_interval_millis = 2;
+}
+
+// MemoryPerformance represents system-wide memory
+// capacity and utilization.
+message MemoryPerformance {
+  uint64 total_bytes = 1;
+  uint64 available_bytes = 2;
+  uint64 used_bytes = 3;
+  double usage_percent = 4;
+}
+
+// StoragePerformance contains mounted filesystem
+// capacity, cumulative disk activity, and disk rates.
+message StoragePerformance {
+  repeated FilesystemPerformance filesystems = 1;
+  repeated DiskPerformance disks = 2;
+  repeated DiskRate disk_rates = 3;
+}
+
+// FilesystemPerformance describes an individual
+// mounted filesystem and its capacity.
+message FilesystemPerformance {
+  string source = 1;
+  string mount_point = 2;
+  string filesystem_type = 3;
+  bool read_only = 4;
+
+  FilesystemCapacityPerformance capacity = 5;
+}
+
+// FilesystemCapacityPerformance represents filesystem
+// capacity and utilization in bytes.
+message FilesystemCapacityPerformance {
+  uint64 total_bytes = 1;
+  uint64 free_bytes = 2;
+  uint64 available_bytes = 3;
+  uint64 used_bytes = 4;
+  uint64 reserved_bytes = 5;
+  double usage_percent = 6;
+}
+
+// DiskPerformance contains cumulative activity
+// counters for an individual storage device.
+message DiskPerformance {
+  string device = 1;
+
+  uint64 read_bytes = 2;
+  uint64 write_bytes = 3;
+
+  uint64 read_operations = 4;
+  uint64 write_operations = 5;
+}
+
+// DiskRate represents calculated storage device
+// activity over a measured sampling interval.
+message DiskRate {
+  string device = 1;
+
+  double read_bytes_per_second = 2;
+  double write_bytes_per_second = 3;
+
+  double read_operations_per_second = 4;
+  double write_operations_per_second = 5;
+
+  int64 sample_interval_millis = 6;
+}
+
+// NetworkPerformance contains network interface
+// metadata, cumulative counters, and calculated rates.
+message NetworkPerformance {
+  repeated NetworkInterfacePerformance interfaces = 1;
+  repeated NetworkInterfaceRate interface_rates = 2;
+}
+
+// NetworkInterfacePerformance describes a network
+// interface and its cumulative activity counters.
+message NetworkInterfacePerformance {
+  string name = 1;
+  uint32 index = 2;
+
+  bool up = 3;
+  bool loopback = 4;
+
+  uint32 mtu = 5;
+
+  // Unset when the native link speed is unavailable.
+  optional uint64 link_speed_bits_per_second = 6;
+
+  uint64 received_bytes = 7;
+  uint64 received_packets = 8;
+  uint64 receive_errors = 9;
+
+  uint64 transmitted_bytes = 10;
+  uint64 transmitted_packets = 11;
+  uint64 transmit_errors = 12;
+
+  // Unset when the native counter is unavailable.
+  optional uint64 receive_dropped = 13;
+  optional uint64 transmit_dropped = 14;
+}
+
+// NetworkInterfaceRate represents calculated network
+// activity over a measured sampling interval.
+message NetworkInterfaceRate {
+  string name = 1;
+  uint32 index = 2;
+
+  double receive_bytes_per_second = 3;
+  double transmit_bytes_per_second = 4;
+
+  double receive_packets_per_second = 5;
+  double transmit_packets_per_second = 6;
+
+  int64 sample_interval_millis = 7;
+}
+
+// ReportPerformanceRequest submits a complete
+// performance snapshot for an enrolled device.
+//
+// Authentication uses the existing agent bearer
+// credential supplied through gRPC metadata.
+message ReportPerformanceRequest {
+  // Registered device identity.
+  string device_id = 1;
+
+  // Unique identifier for this performance sample.
+  // Retries must reuse the same identifier and snapshot.
+  string sample_id = 2;
+
+  // Complete system-wide performance measurements.
+  PerformanceSnapshot snapshot = 3;
+}
+
+// ReportPerformanceResponse acknowledges a
+// successfully persisted performance snapshot.
+message ReportPerformanceResponse {
+  // True when the snapshot has been committed
+  // or an identical stored sample was recognized.
+  bool accepted = 1;
+
+  // Identifier of the acknowledged sample.
+  string sample_id = 2;
+
+  // Original appliance receipt timestamp.
+  // Identical retries preserve this timestamp.
+  google.protobuf.Timestamp received_at = 3;
 }

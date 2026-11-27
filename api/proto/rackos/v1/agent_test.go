@@ -59,19 +59,38 @@ func TestAgentServiceContract(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"Enroll":    false,
-		"Heartbeat": false,
+		"Enroll":            false,
+		"Heartbeat":         false,
+		"ReportInventory":   false,
+		"ReportPerformance": false,
 	}
 
 	for _, method := range AgentService_ServiceDesc.Methods {
-		if _, ok := expected[method.MethodName]; ok {
-			expected[method.MethodName] = true
+		found, exists := expected[method.MethodName]
+
+		if !exists {
+			t.Errorf("unexpected RPC method: %s", method.MethodName)
+			continue
 		}
+
+		if found {
+			t.Errorf("duplicate RPC method: %s", method.MethodName)
+		}
+
+		expected[method.MethodName] = true
 	}
 
 	for name, found := range expected {
 		if !found {
 			t.Errorf("missing RPC method: %s", name)
 		}
+	}
+
+	if len(AgentService_ServiceDesc.Methods) != len(expected) {
+		t.Fatal("unexpected RPC method count")
+	}
+
+	if len(AgentService_ServiceDesc.Streams) != 0 {
+		t.Fatal("unexpected streaming RPC methods")
 	}
 }

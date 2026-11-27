@@ -2,11 +2,19 @@
 # Performance Metrics
 
 RackOS provides native system-wide CPU, memory,
-filesystem capacity, and disk activity monitoring
-on macOS and Linux.
+filesystem capacity, disk activity, and network
+activity monitoring on macOS and Linux.
 
 Performance metrics are collected independently of
 hardware inventory and agent heartbeat operations.
+
+Metrics can be collected locally through the
+command-line interface or reported automatically
+to an enrolled RackOS appliance.
+
+Authenticated performance reports are stored as
+historical snapshots.
+
 
 | Platform | Architecture | CPU | Memory | Filesystems | Disk I/O | Network |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -18,13 +26,6 @@ hardware inventory and agent heartbeat operations.
 Other platforms return an explicit unsupported platform error.
 
 ## Supported Platforms
-
-| Platform | Architecture | CPU | Memory | Filesystems | Disk I/O |
-| --- | --- | --- | --- | --- | --- |
-| macOS | ARM64 | Yes | Yes | Yes | Yes |
-| macOS | AMD64 | Yes | Yes | Yes | Yes |
-| Linux | ARM64 | Yes | Yes | Yes | Yes |
-| Linux | AMD64 | Yes | Yes | Yes | Yes |
 
 Other platforms return an explicit unsupported
 platform error.
@@ -1014,6 +1015,9 @@ A complete performance snapshot contains:
 - Filesystem capacity measurements.
 - Cumulative disk activity counters.
 - Disk throughput and operation rates.
+- Network interface metadata.
+- Cumulative network activity counters.
+- Network throughput and packet rates.
 - A UTC collection completion timestamp.
 
 Example:
@@ -1067,6 +1071,10 @@ Example:
       }
     ]
   },
+  "network": {
+  "interfaces": [],
+  "interface_rates": []
+},
   "collected_at": "2026-11-26T23:00:00Z"
 }
 ```
@@ -1203,18 +1211,72 @@ Interface names, indexes, administrative status,
 MTUs, link speeds, and cumulative activity counters
 are retained as performance metadata.
 
-Network measurements are collected locally and are
-not transmitted to the appliance in the current
-implementation.
-
 Filesystem sources and mount paths are included
 in the collected metadata.
 
 These fields may contain identifying information,
 such as usernames or volume names.
 
-No performance measurements are transmitted
-to the appliance in the current implementation.
+The standalone metrics command does not transmit
+measurements or require enrollment.
+
+When running as an enrolled monitoring agent,
+performance measurements are transmitted to the
+configured appliance over an authenticated,
+verified TLS connection.
+
+The appliance stores historical performance
+snapshots in its local database.
+
+Performance reporting does not require an external
+cloud service.
+
+
+## Automatic Performance Reporting
+
+The enrolled agent automatically collects and
+reports performance measurements when running:
+
+```bash
+rackos-agent run
+```
+
+Debug logging includes successful performance
+acknowledgements:
+
+```bash
+rackos-agent run --debug
+```
+
+Performance reporting operates independently of
+heartbeat monitoring and hardware inventory.
+
+The initial performance snapshot is collected
+at startup.
+
+After successful reporting, the agent waits
+60 seconds before collecting another snapshot.
+
+Collection and RPC operations have ten-second
+timeouts.
+
+Temporary reporting failures preserve the pending
+sample and retry using exponential backoff.
+
+Retry delays range from five seconds to 60 seconds.
+
+Only one pending performance report is retained.
+
+Reports expire after 15 minutes of pending time.
+
+Successful reports are stored as historical
+performance records by the appliance.
+
+The standalone metrics command remains available
+for local troubleshooting without enrollment.
+
+See performance-storage.md for persistence and
+reporting lifecycle details.
 
 ## Testing
 
@@ -1360,11 +1422,13 @@ runtime dependencies.
 - No discard or flush statistics.
 - No permanent disk hardware identifiers.
 - No configurable CPU sampling interval.
-- No scheduled background performance collection.
-- No authenticated performance reporting.
-- No historical performance storage.
 - No performance management REST API.
 - No management console visualization.
+- No configurable performance reporting interval.
+- No persistent offline report queue.
+- No performance reporting retry jitter.
+- No historical retention policy.
+- No automatic historical downsampling.
 
 Container measurements may describe the host
 or virtual machine rather than individual
@@ -1383,7 +1447,6 @@ use different operating system accounting methods.
 Individual native CPU counter rollovers are
 not independently tracked.
 
-Future milestones will introduce network
-interface monitoring, authenticated performance
-reporting, historical persistence, management
-APIs, and retention policies.
+Future milestones will introduce performance
+management APIs, historical time-range retrieval,
+retention policies, visualization, and alerting.

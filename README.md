@@ -1,7 +1,19 @@
 ### RackOS
 
 A local-first infrastructure monitoring platform for home labs.
-Status: Pre-alpha / design and early development. RackOS is a proposed open-source project. The features and interfaces described below are design goals, not available releases. Installation instructions will be published once working builds exist.
+
+**Status:** Pre-alpha / active development.
+
+RackOS currently provides a working Go-based appliance,
+authenticated agent enrollment, heartbeat monitoring,
+hardware inventory persistence, and historical
+performance reporting.
+
+The project remains under active development and is
+not yet a supported production release. Planned
+hardware, management interfaces, integrations, and
+other roadmap features are subject to change.
+
 
 RackOS is being designed for home lab enthusiasts who want an independent, purpose built monitoring appliance rather than another dashboard hosted on the systems they're trying to monitor. The intended flagship hardware, RackOS One, is a 1U touchscreen appliance for 10-inch mini racks. RackOS software is planned to remain freely available, with hardware sales supporting development.
 
@@ -31,7 +43,7 @@ Firmware	Reproducible embedded Linux builds, signed updates, and a rollback-capa
 Additional agentless checks and native integrations from RackOS
 Agents are intended to send telemetry, not accept unsolicited inbound connections. Remote command execution is out of scope for the initial agent.
 
-```text
+
 ### Repository Layout
 
 ```text
@@ -42,7 +54,7 @@ cmd/
 
 internal/
   appliance/
-    agentservice/       # Agent services and inventory ingestion
+    agentservice/       # Authenticated agent RPC services
     config/             # Appliance configuration
     credentials/        # Credential management
     database/           # SQLite persistence and migrations
@@ -51,12 +63,14 @@ internal/
     grpcserver/         # gRPC agent server
     httpserver/         # HTTP management API
     identity/           # Appliance identity
-    inventory/          # Inventory validation and persistence
-    pki/                # Public key infrastructure and certificate rotation
+    inventory/          # Hardware inventory validation and persistence
+    performance/        # Historical performance validation and persistence
+    pki/                # PKI and certificate rotation
 
   agent/
-    client/             # Appliance communication and inventory reporting
+    client/             # Appliance communication and monitoring lifecycle
     inventory/          # Hardware and platform-specific collectors
+    metrics/            # Native CPU, memory, storage and network collectors
     state/              # Persistent local agent state
 
 api/
@@ -70,6 +84,8 @@ docs/
   hardware-inventory.md
   inventory-storage.md
   management-api.md
+  performance-metrics.md
+  performance-storage.md
 
 .github/
   workflows/
@@ -82,12 +98,12 @@ LICENSE
 README.md
 ```
 
-Tests are maintained alongside their respective implementation files.
-Additional directories will be introduced incrementally as their
-corresponding components are developed.
+Tests are maintained alongside their respective
+implementation files.
 
+Additional directories will be introduced incrementally
+as their corresponding components are developed.
 
-Directories may be introduced incrementally rather than as empty placeholders. Go, TypeScript, protobuf and firmware dependencies will be pinned when those components are bootstrapped.
 
 ### Planned agent onboarding
 1. Install a signed RackOS Agent package on a Linux or Windows system.
@@ -108,8 +124,65 @@ Development roadmap
 - [ ] Package Linux and Windows agents
 - [ ] Produce reproducible firmware and test the production update flow
 - [ ] Publish documented plugin contracts and example integrations
-Building and running
-There are no supported install or build instructions yet. Once the first vertical slice is implemented, this section will include verified prerequisites, development commands, and a minimal appliance-plus-agent test environment.
+
+### Building and Running
+
+RackOS is currently distributed as development source
+code rather than a supported installation package.
+
+#### Development Requirements
+
+- Go version specified in go.mod.
+- Git.
+- macOS or Linux for native agent development.
+- Protocol Buffers compiler and Go generators when
+  modifying protocol definitions.
+
+#### Build
+
+```bash
+mkdir -p bin
+
+go build -o bin/rackosd ./cmd/rackosd/
+go build -o bin/rackos-agent ./cmd/rackos-agent/
+go build -o bin/rackosctl ./cmd/rackosctl/
+```
+
+#### Run the Appliance
+
+```bash
+./bin/rackosd
+```
+
+The default appliance services bind to loopback
+addresses.
+
+The development management API should not be exposed
+to untrusted networks.
+
+#### Collect Local Performance Metrics
+
+```bash
+./bin/rackos-agent metrics
+```
+
+Local metrics collection does not require enrollment
+or a running appliance.
+
+#### Validation
+
+```bash
+go mod verify
+go vet ./...
+go test -race -count=1 ./...
+go build ./...
+```
+
+See the documentation directory for agent enrollment,
+device administration, protocol details, and
+historical performance storage.
+
+
 Security
 RackOS is intended to monitor sensitive home-lab infrastructure. The initial security model is:
 - Read-only metrics collection by default; no general-purpose remote shell.
@@ -144,3 +217,20 @@ The RackOS name is a working name and requires a trademark/name clearance review
 - Network throughput and packets-per-second measurements.
 - Network interface identity and counter regression handling.
 - Unified CPU, memory, storage, and network performance snapshots.
+- Versioned Protocol Buffers performance reporting.
+- Authenticated performance reporting over verified TLS.
+- Automatic periodic performance collection.
+- Transactional SQLite historical performance storage.
+- Cryptographically random performance sample identities.
+- Idempotent performance reporting and retry handling.
+- Original receipt timestamp preservation.
+- Out-of-order historical performance ingestion.
+- Bounded exponential reporting retry policies.
+- Pending performance report expiration.
+- Concurrent heartbeat, inventory, and performance workers.
+- Coordinated monitoring worker shutdown.
+- Historical persistence across appliance restarts.
+- Automatic agent reconnection without reenrollment.
+- Credential revocation enforcement for performance reporting.
+- Cascading historical record deletion during device removal.
+- Native performance reporting end-to-end tests.
