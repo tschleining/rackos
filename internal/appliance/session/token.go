@@ -10,6 +10,18 @@ import (
 
 var tokenEncoding = base64.RawURLEncoding.Strict()
 
+// ValidateTokenEncoding verifies the canonical
+// representation of an authentication token.
+//
+// This checks token format only. It does not
+// authenticate a session or query the database.
+func ValidateTokenEncoding(token string) error {
+	digest, err := hashToken(token)
+	clear(digest[:])
+
+	return err
+}
+
 // generateToken creates a cryptographically random
 // 256-bit authentication token and its SHA-256 digest.
 //

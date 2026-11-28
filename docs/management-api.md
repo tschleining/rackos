@@ -16,9 +16,13 @@ The listening address is configured through the
 
 Only explicit loopback IP addresses are permitted.
 
-The Management API currently uses HTTP without
-administrator authentication. Remote access is not
-supported.
+The Management API supports optional management HTTPS.
+
+Administrator authentication middleware and an authenticated management router are implemented but are not yet enabled in the running appliance daemon.
+
+Remote management access is not supported.
+
+See [Management Authentication](management-authentication.md) for the authentication policy and current implementation status.
 
 Do not expose the API through a reverse proxy or
 port forwarding.

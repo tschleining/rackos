@@ -160,30 +160,23 @@ access.
 
 ## Current Security Boundary
 
-This package provides session persistence and
-lifecycle management.
+The session package provides persistent session storage, validation, activity renewal, revocation and lifecycle management.
 
-It does not independently expose browser login,
-authentication middleware, CSRF protection or
-authorization for management API routes.
+The HTTP server provides administrator authentication middleware, secure session cookie helpers and an authenticated management router.
 
-HTTP authentication must preserve the original
-verified credential revision and share the daemon's
-session repository.
+HTTP authentication must preserve the original verified credential revision and share the daemon's session repository.
 
-Authenticated management operations must require
-trusted HTTPS.
+Authenticated management operations must require trusted HTTPS.
 
-Security-sensitive mutations must enforce
-authorization at their transaction boundary.
+Security-sensitive mutations must enforce authorization at their transaction boundary.
 
-Future administrator disablement and password
-change operations must invalidate sessions
-atomically.
+Future administrator disablement and password change operations must invalidate sessions atomically.
 
-RackOS does not yet provide browser authentication
-or a complete production administrator security
-boundary.
+Browser login, logout endpoints, CSRF protection and live daemon authentication enforcement remain pending.
+
+RackOS does not yet provide a complete production administrator security boundary.
+
+See [Management Authentication](management-authentication.md) for the HTTP authentication policy and implementation status.
 
 ## Testing
 
