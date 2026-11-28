@@ -24,6 +24,10 @@ import {
   ErrorBoundary,
 } from "../components/ErrorBoundary";
 
+import {
+  AdministratorControls,
+} from "../features/auth/AdministratorControls";
+
 
 const navigation = [
   {
@@ -146,7 +150,11 @@ export function AppLayout() {
             Local appliance
           </p>
 
-          <ApplianceStatus />
+          <div className="flex flex-wrap items-center gap-4">
+            <ApplianceStatus />
+
+            <AdministratorControls />
+          </div>
         </header>
 
         <main

@@ -204,6 +204,95 @@ assets return HTTP errors rather than frontend HTML.
 The Performance page is loaded separately from the
 initial application bundle.
 
+## Administrator Authentication
+
+The web console implements an administrator authentication interface using the RackOS authentication API.
+
+Authentication state is managed independently of React Router and TanStack Query.
+
+When authentication is enabled, protected application components are not mounted until the current administrator session has been verified.
+
+The authentication boundary supports the following states:
+
+| State | Console behavior |
+| --- | --- |
+| Checking | Verify the current session |
+| Anonymous | Display administrator login |
+| Authenticating | Prevent overlapping login submissions |
+| Authenticated | Mount the protected management application |
+| Signing out | Hide protected content while revoking the session |
+| Unavailable | Lock management access and allow session verification to be retried |
+
+The original application URL is preserved during authentication. Protected deep links become available after successful login without requiring an external redirect.
+
+### Session Lifecycle
+
+Administrator sessions have a 30-minute inactivity timeout and a 12-hour absolute lifetime.
+
+The appliance remains authoritative over session expiration.
+
+The browser verifies authentication when session deadlines are reached, when the browser regains focus, and when a hidden tab becomes visible.
+
+Unauthorized protected management responses trigger session verification.
+
+Authentication generations prevent delayed responses from modifying newer authentication states.
+
+### Administrator Activity
+
+Trusted pointer, click, and non-repeating keyboard events in a visible authenticated console qualify as administrator activity.
+
+Activity renewal attempts are limited to one per 60 seconds per authentication provider instance.
+
+Dashboard polling, automatic refresh, background timers, synthetic input events, and ordinary session inspection do not renew administrator activity.
+
+Activity renewal does not extend the absolute session lifetime.
+
+Logout and session verification supersede outstanding activity renewal operations.
+
+### Cross-Tab Synchronization
+
+Browser tabs exchange session invalidation hints using BroadcastChannel.
+
+The channel transmits only a constant session-change notification. Credentials, authentication tokens, cookies, and session metadata are never transmitted.
+
+Receiving tabs verify their current session with the appliance rather than trusting messages as authentication decisions.
+
+Browsers without BroadcastChannel support retain session deadline verification and management request invalidation behavior.
+
+### Management Query Isolation
+
+Each authenticated generation owns an independent TanStack Query client.
+
+When a generation ends, outstanding protected queries are cancelled and the retired query and mutation caches are cleared.
+
+Successful activity renewal preserves the current authentication generation and management query cache.
+
+Authentication credentials and authentication mutations remain outside TanStack Query.
+
+### Authentication Build Configuration
+
+Frontend authentication is temporarily controlled by a build-time setting:
+
+```bash
+VITE_RACKOS_AUTHENTICATION=true npm --prefix web run build
+```
+
+The default build remains compatible with the existing appliance daemon:
+
+```bash
+npm --prefix web run build
+```
+
+The enabled build requires HTTPS and a compatible authenticated management API.
+
+There is no automatic runtime fallback to unauthenticated management access.
+
+The build setting is temporary integration scaffolding and must be removed when mandatory daemon authentication enforcement is introduced.
+
+The Vite development API proxy remains read-only and does not forward administrator credentials or authentication cookies.
+
+See [Management Authentication](management-authentication.md) for the complete authentication API contract.
+
 ## Data Refresh
 
 | Information | Automatic refresh |
@@ -302,8 +391,13 @@ navigation to another page.
 The management console is currently local-only
 and read-only.
 
-The appliance does not yet provide administrator
-authentication or management HTTPS.
+Management HTTPS is implemented and remains optional in the current appliance configuration.
+
+Administrator authentication endpoints, persistent sessions, and the browser authentication interface are implemented.
+
+Live administrator authentication enforcement by the appliance daemon remains pending.
+
+The default console must not be treated as an authenticated production management interface.
 
 Do not expose the console through a reverse proxy,
 port forwarding, or other remote access mechanism.
@@ -347,6 +441,11 @@ and production compilation:
 ```bash
 npm --prefix web run typecheck
 npm --prefix web run test
+
+npm --prefix web exec \
+  --workspace=@rackos/console \
+  -- vitest run
+
 npm --prefix web run build
 ```
 
@@ -385,6 +484,43 @@ chart rendering independently of a running agent.
 The browser suite does not require enrollment or
 access to the development appliance database.
 
+### Authentication Browser Tests
+
+Build the authentication-enabled production frontend:
+
+```bash
+VITE_RACKOS_AUTHENTICATION=true npm --prefix web run build
+```
+
+Run the isolated authentication browser suite:
+
+```bash
+npm --prefix web exec \
+  --workspace=@rackos/console \
+  -- playwright test \
+  --config=playwright.auth.config.ts
+```
+
+The authentication browser suite intercepts requests to a reserved test origin and serves the actual production frontend assets with controlled API responses.
+
+It validates:
+
+- Protected deep links and administrator login.
+- Authentication infrastructure failures.
+- Trusted browser activity and renewal throttling.
+- Unauthorized management request handling.
+- Cross-tab authentication synchronization.
+
+The tests do not contact a running appliance or require real administrator credentials.
+
+They do not validate actual TLS transport, authentication cookie handling, password verification, or persistent session transactions.
+
+Restore the default frontend build after testing:
+
+```bash
+npm --prefix web run build
+```
+
 ## Continuous Integration
 
 GitHub Actions validates both build configurations.
@@ -406,6 +542,10 @@ The integrated console job verifies:
 - Integrated appliance compilation.
 - Integrated Go tests with race detection.
 - Playwright Chromium browser tests.
+- Authentication-enabled production frontend compilation.
+- Administrator authentication component regression tests.
+- Isolated authentication Chromium browser tests.
+- Verified HTTPS appliance browser tests.
 
 ## Current Limitations
 
@@ -414,15 +554,17 @@ interface.
 
 The following capabilities are not yet implemented:
 
-- Administrator authentication and authorization.
 - Remote browser management.
-- Management HTTPS.
 - Interactive agent enrollment and approval.
 - Device administration through the browser.
 - Alert management.
 - Configurable dashboards and widgets.
 - Native integration management.
 - Touchscreen panel interface.
+- Mandatory administrator authentication enforcement by the appliance daemon.
+- Complete authenticated browser-to-appliance integration.
+- Mandatory management HTTPS.
+- Operation-specific administrator authorization.
 
 Long historical time ranges may be incomplete due
 to bounded retrieval.

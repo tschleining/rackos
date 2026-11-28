@@ -250,6 +250,16 @@ The management console provides:
 The management interface remains local-only
 and read-only.
 
+Administrator authentication endpoints, persistent sessions, and the browser authentication interface are implemented.
+
+The authentication interface supports login, logout, session restoration, inactivity handling, cross-tab synchronization, and protected management navigation.
+
+The default console remains unauthenticated until mandatory administrator authentication is integrated into the running appliance daemon.
+
+Management HTTPS is available through the appliance's optional TLS configuration.
+
+See [Management Authentication](docs/management-authentication.md) for implementation status, authentication policies, and security requirements.
+
 #### Frontend Development
 
 With the backend appliance running:
@@ -317,8 +327,10 @@ and cursor-based pagination.
 Performance responses preserve 64-bit counter
 precision and optional measurement availability.
 
-The Management API does not currently implement
-administrator authentication or HTTPS.
+Management HTTPS is available but optional.
+
+Administrator authentication is implemented but
+is not yet enforced by the running appliance daemon.
 
 Do not expose it through a reverse proxy, port
 forwarding, or other remote access mechanism.
@@ -430,15 +442,18 @@ The currently implemented security controls include:
 - Restricted static asset serving.
 - Sanitized frontend request error presentation.
 
-The Management API currently operates without
-administrator authentication or HTTPS.
+The Management API supports optional HTTPS.
+Mandatory administrator authentication enforcement
+remains pending in the running appliance daemon.
 
 Remote management access must remain disabled.
 
 Planned security capabilities include:
 
-- Administrator authentication.
-- Management HTTPS.
+- Mandatory administrator authentication enforcement.
+- Mandatory management HTTPS.
+- Complete authenticated browser-to-appliance integration.
+- Operation-specific administrator authorization.
 - Explicit interactive agent approval.
 - Mutually authenticated agent TLS.
 - Automatic agent credential renewal.
