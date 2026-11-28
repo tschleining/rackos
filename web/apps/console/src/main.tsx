@@ -1,20 +1,42 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import {
+  StrictMode,
+} from "react";
+
+import {
+  createRoot,
+} from "react-dom/client";
 
 import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 
-import { BrowserRouter } from "react-router";
+import {
+  BrowserRouter,
+} from "react-router";
 
-import { queryClient } from "./app/services";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import {
+  api,
+  authenticationEnabled,
+  queryClient,
+} from "./app/services";
+
+import {
+  ErrorBoundary,
+} from "./components/ErrorBoundary";
+
+import {
+  ActivityTracker,
+  AuthBoundary,
+  AuthProvider,
+  SessionLifecycle,
+} from "./features/auth";
 
 import App from "./App";
 
 import "./styles/index.css";
 
-const container = document.getElementById("root");
+const container =
+  document.getElementById("root");
 
 if (!container) {
   throw new Error(
@@ -25,11 +47,25 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <BrowserRouter>
+        {authenticationEnabled ? (
+          <AuthProvider client={api}>
+            <SessionLifecycle />
+
+            <ActivityTracker />
+
+            <AuthBoundary>
+              <App />
+            </AuthBoundary>
+          </AuthProvider>
+        ) : (
+          <QueryClientProvider
+            client={queryClient}
+          >
+            <App />
+          </QueryClientProvider>
+        )}
+      </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,
 );

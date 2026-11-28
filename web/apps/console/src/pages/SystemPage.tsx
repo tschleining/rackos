@@ -12,6 +12,10 @@ import {
   useApplianceVersion,
 } from "../hooks/useAppliance";
 
+import {
+  authenticationEnabled,
+} from "../app/services";
+
 export function SystemPage() {
   const version = useApplianceVersion();
 
@@ -105,38 +109,67 @@ export function SystemPage() {
               Management access
             </h2>
           </div>
+            <dl className="divide-y divide-rack-border text-sm">
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-rack-muted">
+                  Access mode
+                </dt>
 
-          <dl className="divide-y divide-rack-border text-sm">
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-rack-muted">
-                Access mode
-              </dt>
+                <dd>Local only</dd>
+              </div>
 
-              <dd>Local only</dd>
-            </div>
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-rack-muted">
+                  Management API
+                </dt>
 
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-rack-muted">
-                Management API
-              </dt>
+                <dd>Read-only monitoring</dd>
+              </div>
 
-              <dd>Read-only</dd>
-            </div>
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-rack-muted">
+                  Console authentication
+                </dt>
 
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-rack-muted">
-                Remote management
-              </dt>
+                <dd
+                  className={
+                    authenticationEnabled
+                      ? "text-rack-success"
+                      : "text-rack-warning"
+                  }
+                >
+                  {authenticationEnabled
+                    ? "Enabled"
+                    : "Disabled"}
+                </dd>
+              </div>
 
-              <dd>Unsupported</dd>
-            </div>
-          </dl>
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-rack-muted">
+                  Management transport
+                </dt>
 
-          <p className="mt-5 text-sm leading-relaxed text-rack-warning">
-            Administrator authentication and management
-            HTTPS are not implemented. Do not expose
-            this console to untrusted networks.
-          </p>
+                <dd>
+                  {window.location.protocol === "https:"
+                    ? "HTTPS"
+                    : "HTTP"}
+                </dd>
+              </div>
+
+              <div className="flex justify-between gap-4 py-3">
+                <dt className="text-rack-muted">
+                  Remote management
+                </dt>
+
+                <dd>Unsupported</dd>
+              </div>
+            </dl>
+
+            <p className="mt-5 text-sm leading-relaxed text-rack-warning">
+              {authenticationEnabled
+                ? "Administrator authentication is enabled in this console build. Management access must also be enforced by the appliance."
+                : "Administrator authentication is not enforced by the current appliance configuration. Do not expose this console to untrusted networks."}
+            </p>
         </section>
       </div>
     </>

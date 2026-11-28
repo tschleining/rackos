@@ -1,4 +1,3 @@
-
 export type APIErrorKind =
   | "http"
   | "network"
@@ -12,11 +11,14 @@ export class APIError extends Error {
   readonly status: number | null;
   readonly serverMessage: string | null;
 
+  readonly retryAfterSeconds: number | null;
+
   constructor(
     kind: APIErrorKind,
     message: string,
     status: number | null = null,
     serverMessage: string | null = null,
+    retryAfterSeconds: number | null = null,
   ) {
     super(message);
 
@@ -24,5 +26,8 @@ export class APIError extends Error {
     this.kind = kind;
     this.status = status;
     this.serverMessage = serverMessage;
+
+    this.retryAfterSeconds =
+      retryAfterSeconds;
   }
 }

@@ -4,13 +4,37 @@ RackOS provides administrator authentication through persistent server-side sess
 
 ## Implementation Status
 
-The administrator authentication API and authenticated management router are implemented and tested.
+The administrator authentication API, persistent session repository, authenticated management router, and browser authentication interface are implemented and tested.
 
-The running appliance daemon does not yet use the complete authenticated router.
+The authentication-enabled web console provides:
 
-Frontend authentication integration, live daemon enforcement, and browser-level security testing remain pending.
+- Administrator login and logout.
+- Read-only session restoration.
+- Protected application routing and navigation.
+- Session expiration verification.
+- Throttled administrator activity renewal.
+- Cross-tab session synchronization.
+- Independent management query caches per authentication generation.
+- Cancellation and eviction of retired query caches.
+- Fail-closed handling of authentication infrastructure failures.
+- Generic authentication error presentation.
+- Login rate-limit feedback.
+
+The running appliance daemon does not yet use the complete authenticated management router.
+
+Frontend authentication is currently enabled through an explicit build-time configuration:
+
+```bash
+VITE_RACKOS_AUTHENTICATION=true npm --prefix web run build
+```
+
+The default frontend build preserves the existing unauthenticated management console until live daemon enforcement is introduced.
+
+Authentication-enabled browser tests exercise the production frontend against controlled authentication API responses. These tests do not replace real HTTPS, secure cookie, persistent session, or integrated daemon security testing.
 
 The existing management console must not be considered an authenticated production management interface.
+
+Live daemon enforcement and complete end-to-end administrator authentication remain pending.
 
 ## Authentication Policy
 
@@ -378,7 +402,11 @@ go test -race -count=1 ./...
 
 Integration tests exercise real HTTPS connections, persistent SQLite sessions, Argon2id verification, HTTP cookie-jar behavior, and transactional audit logging.
 
-Actual browser authentication and daemon integration require additional end-to-end testing.
+The authentication-enabled frontend is additionally validated through TypeScript API client tests, React component tests, and Chromium browser integration tests.
+
+The browser integration tests use controlled API responses to exercise login, protected navigation, administrator activity, unauthorized management responses, and native cross-tab synchronization.
+
+Complete end-to-end testing against the authenticated appliance daemon remains pending.
 
 ## Related Documentation
 

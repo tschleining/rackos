@@ -91,8 +91,14 @@ jobs:
       - name: Build integrated appliance
         run: ./scripts/build-appliance.sh
 
-      - name: Run frontend unit tests
+      - name: Run shared API client tests
         run: npm --prefix web run test
+
+      - name: Run console component tests
+        run: |
+          npm --prefix web exec \
+            --workspace=@rackos/console \
+            -- vitest run
 
       - name: Validate embedded appliance
         run: |
@@ -115,3 +121,20 @@ jobs:
 
       - name: Run verified HTTPS browser tests
         run: ./scripts/test-console-https.sh
+
+      - name: Build authentication-enabled console
+        env:
+          VITE_RACKOS_AUTHENTICATION: "true"
+        run: npm --prefix web run build
+
+      - name: Run authentication browser tests
+        run: |
+          npm --prefix web exec \
+            --workspace=@rackos/console \
+            -- playwright test \
+            --config=playwright.auth.config.ts
+
+      - name: Restore default console build
+        env:
+          VITE_RACKOS_AUTHENTICATION: "false"
+        run: npm --prefix web run build

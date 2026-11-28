@@ -4,6 +4,7 @@ export type * from "./appliance";
 export type * from "./devices";
 export type * from "./inventory";
 export type * from "./performance";
+export type * from "./authentication";
 
 export {
   APIError,

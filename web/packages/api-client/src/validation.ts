@@ -21,6 +21,7 @@ import type {
   PerformanceRecord,
   PerformanceSnapshot,
   StoragePerformance,
+  AdministratorSession,
 } from "./index";
 
 export type Guard<T> = (
@@ -285,6 +286,93 @@ function shape<T extends object>(
     entries.every(([key, guard]) =>
       guard(value[key]),
     );
+}
+
+// Administrator authentication
+
+const SESSION_IDLE_TIMEOUT_MS =
+  30 * 60 * 1000;
+
+const SESSION_ABSOLUTE_LIFETIME_MS =
+  12 * 60 * 60 * 1000;
+
+function isSessionTimestamp(
+  value: unknown,
+): value is string {
+  return (
+    typeof value === "string" &&
+    value.endsWith("Z") &&
+    timestampMillis(value, true) !== null
+  );
+}
+
+const administratorSessionShape =
+  shape<AdministratorSession>({
+    administrator_id: isDeviceID,
+
+    created_at: isSessionTimestamp,
+    last_activity_at: isSessionTimestamp,
+
+    expires_at: isSessionTimestamp,
+    idle_expires_at: isSessionTimestamp,
+  });
+
+export function isAdministratorSession(
+  value: unknown,
+): value is AdministratorSession {
+  if (!administratorSessionShape(value)) {
+    return false;
+  }
+
+  // Authentication responses deliberately use
+  // a strict field allowlist.
+  //
+  // Unexpected fields could contain internal
+  // authentication metadata or secrets.
+  if (Object.keys(value).length !== 5) {
+    return false;
+  }
+
+  const created = timestampMillis(
+    value.created_at,
+    true,
+  );
+
+  const activity = timestampMillis(
+    value.last_activity_at,
+    true,
+  );
+
+  const expires = timestampMillis(
+    value.expires_at,
+    true,
+  );
+
+  const idleExpires = timestampMillis(
+    value.idle_expires_at,
+    true,
+  );
+
+  if (
+    created === null ||
+    activity === null ||
+    expires === null ||
+    idleExpires === null
+  ) {
+    return false;
+  }
+
+  return (
+    created > 0 &&
+    activity >= created &&
+    activity < expires &&
+    expires - created ===
+      SESSION_ABSOLUTE_LIFETIME_MS &&
+    idleExpires === Math.min(
+      activity + SESSION_IDLE_TIMEOUT_MS,
+      expires,
+    )
+  );
 }
 
 // Appliance responses

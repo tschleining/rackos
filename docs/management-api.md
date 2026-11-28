@@ -746,7 +746,8 @@ go test -race -count=1 -v \
 - No snapshot-isolated pagination across requests.
 - Device summaries are calculated from registered records.
 - Administrator authentication is not yet enforced by the running appliance daemon.
-- Frontend administrator authentication integration is pending.
+- The administrator authentication interface is implemented and tested using an authentication-enabled frontend build.
+- Complete browser authentication against the running appliance daemon remains pending.
 - Management HTTPS remains optional in the current daemon configuration.
 - Remote management access remains unsupported.
 
