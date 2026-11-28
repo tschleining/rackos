@@ -263,17 +263,20 @@ func runAdminWithPrompt(
 	defer clear(digest.Salt[:])
 	defer clear(digest.Hash[:])
 
+	account, err = commitAdministratorChange(
+		operationCtx,
+		db,
+		command,
+		canonicalUsername,
+		account,
+		digest,
+	)
+	if err != nil {
+		return err
+	}
+
 	switch command {
 	case "init":
-		account, err := repository.CreateInitial(
-			operationCtx,
-			canonicalUsername,
-			digest,
-		)
-		if err != nil {
-			return err
-		}
-
 		_, err = fmt.Fprintf(
 			stdout,
 			"Administrator initialized: %s\n",
@@ -283,14 +286,6 @@ func runAdminWithPrompt(
 		return err
 
 	case "reset-password":
-		if err := repository.ReplacePassword(
-			operationCtx,
-			account.ID,
-			digest,
-		); err != nil {
-			return err
-		}
-
 		_, err = fmt.Fprintf(
 			stdout,
 			"Administrator password replaced: %s\n",

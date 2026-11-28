@@ -273,6 +273,12 @@ var migrations = []string{
 	CREATE UNIQUE INDEX idx_administrators_singleton
 		ON administrators((1));
 	`,
+
+	// Migration 008: Administrator sessions.
+	migration008AdministratorSessions,
+
+	// Migration 009: Administrative audit events.
+	migration009AuditEvents,
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {

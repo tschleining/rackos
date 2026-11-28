@@ -23,6 +23,7 @@ import (
 	"github.com/tschleining/rackos/internal/appliance/performance"
 	"github.com/tschleining/rackos/internal/appliance/pki"
 	"github.com/tschleining/rackos/internal/appliance/retention"
+	"github.com/tschleining/rackos/internal/appliance/session"
 
 	"google.golang.org/grpc"
 )
@@ -271,6 +272,49 @@ func run(
 	}
 	defer grpcListener.Close()
 
+	// Require reauthentication after daemon startup.
+	// Do not accept management requests until persisted
+	// sessions have been invalidated successfully.
+	sessionRepository := session.NewRepository(db)
+
+	invalidatedSessions, err :=
+		sessionRepository.InvalidateOnStartup(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"initialize administrator sessions: %w",
+			err,
+		)
+	}
+
+	logger.Info(
+		"Administrator session management initialized",
+		"invalidated_sessions", invalidatedSessions,
+		"maximum_active_sessions", session.MaxActiveSessions,
+		"idle_timeout", session.IdleTimeout.String(),
+		"absolute_lifetime", session.AbsoluteLifetime.String(),
+		"cleanup_interval", session.CleanupInterval.String(),
+	)
+
+	sessionMaintenanceCtx, cancelSessionMaintenance :=
+		context.WithCancel(ctx)
+
+	sessionMaintenanceDone := make(chan struct{})
+
+	go func() {
+		defer close(sessionMaintenanceDone)
+
+		sessionRepository.RunMaintenance(
+			sessionMaintenanceCtx,
+			logger,
+		)
+	}()
+
+	// Always join the worker before closing SQLite.
+	defer func() {
+		cancelSessionMaintenance()
+		<-sessionMaintenanceDone
+	}()
+
 	// Start retention only after both network
 	// listeners have been initialized successfully.
 	retentionCtx, cancelRetention := context.WithCancel(ctx)
@@ -376,6 +420,7 @@ func run(
 	}
 
 	logger.Info("Shutting down RackOS appliance")
+	cancelSessionMaintenance()
 
 	// Cancel retention even when shutdown was
 	// caused by a network server failure rather
