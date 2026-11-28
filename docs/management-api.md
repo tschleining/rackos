@@ -1,9 +1,8 @@
 # Management API
 
-The RackOS Management API provides a read-only HTTP
-interface for retrieving appliance information,
-managed device status, and historical performance
-measurements.
+The RackOS Management API provides a read-only interface for retrieving appliance information, managed device status, hardware inventory, and historical performance measurements.
+
+A separate administrator authentication API provides login, logout, session inspection, and session activity renewal.
 
 ## Connection
 
@@ -18,7 +17,9 @@ Only explicit loopback IP addresses are permitted.
 
 The Management API supports optional management HTTPS.
 
-Administrator authentication middleware and an authenticated management router are implemented but are not yet enabled in the running appliance daemon.
+Administrator authentication middleware, authentication endpoints, CSRF protection, and the complete authenticated management router are implemented but are not yet enabled in the running appliance daemon.
+
+Existing management requests retain their current behavior until live authentication enforcement is introduced.
 
 Remote management access is not supported.
 
@@ -42,6 +43,25 @@ port forwarding.
 
 GET routes also support HEAD through the standard
 Go HTTP router.
+
+## Administrator Authentication Endpoints
+
+The authenticated management router provides the following endpoints:
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/v1/auth/login` | Authenticate and create an administrator session |
+| POST | `/api/v1/auth/logout` | Revoke the current administrator session |
+| GET, HEAD | `/api/v1/auth/session` | Inspect the current authenticated session |
+| POST | `/api/v1/auth/activity` | Explicitly renew session activity |
+
+These endpoints require HTTPS.
+
+All authentication mutations require same-origin CSRF protection.
+
+The authentication endpoints are implemented and tested but are not yet exposed by the running appliance daemon.
+
+See [Management Authentication](management-authentication.md) for complete request and response contracts, cookie behavior, rate limiting, and security requirements.
 
 ## List Devices
 
@@ -653,7 +673,11 @@ Set `CURSOR` to the previous response's
 
 ## Security
 
-The Management API is read-only.
+Device, inventory, and performance management endpoints
+are read-only.
+
+Administrator authentication endpoints modify only
+the associated authentication and session state.
 
 Agent credentials, enrollment tokens, credential
 hashes, and private certificate keys are not
@@ -708,9 +732,6 @@ go test -race -count=1 -v \
 
 ## Current Limitations
 
-- No administrator authentication.
-- No management HTTPS support.
-- No browser-origin protections.
 - No remote management access.
 - No device-list pagination or filtering.
 - No client-selectable historical sorting.
@@ -721,11 +742,13 @@ go test -race -count=1 -v \
 - No storage statistics API.
 - No per-device historical retention policy.
 - No real-time event subscriptions.
-- No management console visualization.
 - No performance alerting or threshold evaluation.
 - No snapshot-isolated pagination across requests.
-- Device summaries are calculated from registered
-  records.
+- Device summaries are calculated from registered records.
+- Administrator authentication is not yet enforced by the running appliance daemon.
+- Frontend administrator authentication integration is pending.
+- Management HTTPS remains optional in the current daemon configuration.
+- Remote management access remains unsupported.
 
 See [performance-storage.md](performance-storage.md)
 for historical persistence and reporting behavior.

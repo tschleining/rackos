@@ -160,23 +160,29 @@ access.
 
 ## Current Security Boundary
 
-The session package provides persistent session storage, validation, activity renewal, revocation and lifecycle management.
+The session package provides persistent session storage, validation, activity renewal, revocation, and lifecycle management.
 
-The HTTP server provides administrator authentication middleware, secure session cookie helpers and an authenticated management router.
+The HTTP server provides administrator authentication middleware, secure session cookie helpers, strict request validation, CSRF protection, login rate limiting, and a complete authenticated management router.
 
-HTTP authentication must preserve the original verified credential revision and share the daemon's session repository.
+Administrator login, logout, current session inspection, and explicit activity renewal endpoints are implemented and tested.
 
-Authenticated management operations must require trusted HTTPS.
+HTTP authentication preserves the original verified credential revision between password verification and transactional session issuance.
+
+The authenticated management router must share the daemon's session repository with session maintenance.
+
+Authenticated management operations require trusted HTTPS.
 
 Security-sensitive mutations must enforce authorization at their transaction boundary.
 
-Future administrator disablement and password change operations must invalidate sessions atomically.
+Offline administrator password recovery atomically replaces credentials and invalidates existing sessions.
 
-Browser login, logout endpoints, CSRF protection and live daemon authentication enforcement remain pending.
+Future administrator disablement and online password change operations must also invalidate sessions atomically.
+
+Frontend authentication integration, browser-level security testing, and live daemon authentication enforcement remain pending.
 
 RackOS does not yet provide a complete production administrator security boundary.
 
-See [Management Authentication](management-authentication.md) for the HTTP authentication policy and implementation status.
+See [Management Authentication](management-authentication.md) for the authentication API contract, security policy, and current implementation status.
 
 ## Testing
 
